@@ -65,3 +65,10 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
    hardcoded Hugging Face access token in cell 31 (the push-to-hub cell). gitleaks caught it at commit time.
    Our copy in `training/reference/` is redacted. **Revoke that token on huggingface.co and remove it from the
    Kaggle notebook.** It is publicly readable.
+
+## 2026-09-27 · Disk cleanup (resolves M0 blocker 1)
+- C: free 46.8 → **145.2 GB**. With team approval, deleted three Windows HF cache entries unrelated to Nūn:
+  `ArabicSpeech/ADI20` (57 GB), `UBC-NLP/NADI_2026_ADI20_micro` (20 GB), `Qwen/Qwen2.5-Omni-7B` (21 GB).
+- `uv cache clean` in WSL freed space inside the WSL disk only. Compacting the WSL vhdx (sparse + fstrim, then
+  diskpart) reclaimed nothing on C:. Deleting files inside WSL or Docker does not free C:.
+- Estimated need for M7/M8 + deploy is ~60–80 GB, so 145 GB is enough. Watch it during synthetic data generation.
