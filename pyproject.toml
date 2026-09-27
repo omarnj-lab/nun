@@ -1,0 +1,53 @@
+[project]
+name = "nun"
+version = "0.0.1"
+description = "Nūn: identify and verify Arabic calligraphy inscriptions against a closed trusted corpus"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "python-dotenv>=1.0",
+    "huggingface_hub>=0.34",
+    "pillow>=10.4",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# GPU stack; torch itself is installed first by `make setup` from the CUDA 12.8 index (RTX 5090 / sm_120).
+# transformers==5.15.0 / trl==0.22.2 / torchao are then force-installed with --no-deps (the v1 notebook's
+# exact versions): unsloth declares transformers<=5.5, but muse_glimmer needs 5.15.
+ml = [
+    "unsloth>=2026.9",
+    "unsloth_zoo>=2026.9",
+    "peft>=0.19",
+    "accelerate>=1.10",
+    "bitsandbytes>=0.47",
+    "datasets>=3.4,<4.4",
+    "jiwer",
+    "sacrebleu",
+    "imagehash",
+    "scikit-learn",
+]
+dev = [
+    "ruff>=0.6",
+    "pytest>=8.0",
+    "pre-commit>=3.8",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["nun*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["training/reference"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

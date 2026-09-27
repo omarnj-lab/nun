@@ -1,0 +1,46 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# data & artefacts (models/datasets go to Hugging Face, never git)
+data/*
+!data/.gitkeep
+*.safetensors
+*.bin
+*.gguf
+*.parquet
+outputs/
+checkpoints/
+runs/
+wandb/
+
+# challenge documents: reference only, not redistributed (SOURCES.md §7)
+context/participant_guide.pdf
+context/scientific_package.pdf
+context/presentation_template.pptx
+# large media
+context/*.mp4
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# node
+node_modules/
+apps/web/dist/
+
+# os / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# unsloth runtime cache
+unsloth_compiled_cache/
