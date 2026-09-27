@@ -1,0 +1,102 @@
+{
+  "built_at": "2026-09-27T20:07:11+00:00",
+  "sources": {
+    "tanzil:simple-clean": {
+      "url": "https://tanzil.net/pub/download/index.php?quranType=simple-clean&outType=txt-2&agree=true",
+      "sha256": "228df2a717671aeb9d2ff573002bd28d6b3f973f4bc7153554e3a81663d67610",
+      "version": "Tanzil v1.1"
+    },
+    "tanzil:uthmani": {
+      "url": "https://tanzil.net/pub/download/index.php?quranType=uthmani&outType=txt-2&agree=true",
+      "sha256": "bf4f57b968d03f4131c070b1e285da9be0e0a108a21c910e872801ca273312c8",
+      "version": "Tanzil v1.1"
+    },
+    "tanzil:metadata": {
+      "url": "https://tanzil.net/res/text/metadata/quran-data.xml",
+      "sha256": "8867c1d88191472adec9db694b3cd9f135b1a2ef580574d32cf888dcb22c5c7a"
+    },
+    "quranenc:english_saheeh": {
+      "url": "https://quranenc.com/api/v1/translation/sura/english_saheeh/{sura}",
+      "version": "1.1.2",
+      "last_update": 1750772247,
+      "title": "English Translation - Noor International Center",
+      "status": "approved",
+      "sha256_all_suras": "1933ca501ece7493825275eb680d92c45bb1004cde3ede21c47348c4b5743b90"
+    },
+    "quranenc:french_montada": {
+      "url": "https://quranenc.com/api/v1/translation/sura/french_montada/{sura}",
+      "version": "1.0.0",
+      "last_update": 1750745766,
+      "title": "French translation - Noor International Center",
+      "status": "undecided",
+      "sha256_all_suras": "1703c9a60cf459356b906bada180a4e2ee6000cd50e97e712c275e6df5776b9f"
+    },
+    "quranenc:french_rashid": {
+      "url": "https://quranenc.com/api/v1/translation/sura/french_rashid/{sura}",
+      "version": "1.0.3",
+      "last_update": 1782043143,
+      "title": "French Translation - Rachid Maach",
+      "status": "undecided",
+      "sha256_all_suras": "45d7b2a57f0b53873584010df74174df7f9f5667fb22c552a9c6420ef6e83afa"
+    },
+    "quranenc:urdu_junagarhi": {
+      "url": "https://quranenc.com/api/v1/translation/sura/urdu_junagarhi/{sura}",
+      "version": "1.1.3",
+      "last_update": 1755085049,
+      "title": "Urdu Translation - Muhammad Junagarhi",
+      "status": "pending",
+      "sha256_all_suras": "76255255bd972d7129dc5ebae4f61e567273ef1785d9a398ecb9da29c6dc1f72"
+    },
+    "quranenc:indonesian_complex": {
+      "url": "https://quranenc.com/api/v1/translation/sura/indonesian_complex/{sura}",
+      "version": "1.0.1",
+      "last_update": 1750935542,
+      "title": "Indonesian Translation - The Complex",
+      "status": "pending",
+      "sha256_all_suras": "7da0d2423c6c73287393885d09fec6ffe921bebe6b72afac13c3751945581249"
+    },
+    "quranenc:chinese_makin": {
+      "url": "https://quranenc.com/api/v1/translation/sura/chinese_makin/{sura}",
+      "version": "1.0.2",
+      "last_update": 1662501318,
+      "title": "Chinese Translation - Muhammad Makeen",
+      "status": "pending",
+      "sha256_all_suras": "e095a9265d57559b58dac247a1ec8fd3c7a87c94b99ff1d5e90819fa2f40b56c"
+    },
+    "quranenc:arabic_moyassar": {
+      "url": "https://quranenc.com/api/v1/translation/sura/arabic_moyassar/{sura}",
+      "version": null,
+      "last_update": null,
+      "title": null,
+      "status": "undecided",
+      "sha256_all_suras": "87572379e0a2d345d04e88dd6ead9b9dabf90a33188153885d6a125d72919dce"
+    }
+  },
+  "checks": {
+    "ayah_count": 6236,
+    "sura_count": 114,
+    "uthmani_identical_across_quranenc_keys": true,
+    "basmala_header_separated_from_aya1": {
+      "suras": 112,
+      "note": "Tanzil header, not verse text"
+    },
+    "aya1_first_letters_match_uthmani": true,
+    "empty_texts": [],
+    "text_uthmani_byte_identical_to_source": true,
+    "juz_range": [
+      1,
+      30
+    ],
+    "uthmani_crosscheck_tanzil": {
+      "agree": 6236,
+      "differ": 0,
+      "differ_refs": []
+    }
+  },
+  "outputs": {
+    "quran.jsonl": {
+      "records": 6236,
+      "sha256": "26629f5c60b60975d71a3b620551221bad5d16c4eaf233bcc0407787ee3c9f16"
+    }
+  }
+}

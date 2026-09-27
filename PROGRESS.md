@@ -72,3 +72,31 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
 - `uv cache clean` in WSL freed space inside the WSL disk only. Compacting the WSL vhdx (sparse + fstrim, then
   diskpart) reclaimed nothing on C:. Deleting files inside WSL or Docker does not free C:.
 - Estimated need for M7/M8 + deploy is ~60–80 GB, so 145 GB is enough. Watch it during synthetic data generation.
+
+## 2026-09-27 · M1 · Corpus `[PRE]`
+- `make corpus` → `data/corpus/quran.jsonl` (6,236 records) + `MANIFEST.json`. Sources: QuranEnc (Uthmani text,
+  6 translations, al-Muyassar) and Tanzil v1.1 (simple-clean, uthmani, metadata). Raw responses are cached
+  byte-for-byte in `data/raw/`; `--offline` rebuilds from the cache.
+- **Build checks (all pass; any failure aborts):** 6,236 ayahs · 114 suras · per-sura counts = Tanzil metadata ·
+  Uthmani byte-identical to the QuranEnc response and identical across all 7 keys · QuranEnc Uthmani = Tanzil
+  Uthmani (normalised) on 6,236/6,236 · no empty texts · juz 1–30 monotonic · Basmala header separated from
+  aya 1 of 112 suras.
+- **Found and fixed:** Tanzil's text files put the sura-header Basmala inside aya 1 (e.g. 2:1 read «بسم الله
+  الرحمن الرحيم الم»). It is now separated from `text_simple`. 1:1 and 27:30 keep theirs (tests added). The
+  verse text is unchanged; this is recorded in the manifest.
+- **Spot-check** (`make spotcheck`): 20 random ayahs re-fetched live from QuranEnc's per-aya endpoint →
+  **20/20 byte-identical** (Arabic + English). Saved to `data/corpus/SPOTCHECK.json`.
+- **Normaliser** (`nun/normalize/arabic.py`) per SPEC §3.3, plus folding of Persian/Urdu letter forms (ی ک ہ ۃ
+  ھ), after DuwatBench gold text contained «اللہ». 38 cases; 48 tests in total pass.
+- **Serving rule** (`nun/corpus/store.py`): only `approved` translations/tafsir are ever returned. Today that is
+  English only; fr/ur/id/zh and al-Muyassar are downloaded but withheld until M2 decisions.
+- Deviation from SPEC §3.1: `translations` is keyed by QuranEnc key (e.g. `english_saheeh`), not by language,
+  because fr has two candidates. The language→key choice lives in `nun/corpus/sources.py`.
+- **Reviewer drafts** (`make lists`): `data/lists/names.draft.jsonl` (100), `dhikr.draft.jsonl` (32),
+  `inscriptions.draft.yaml` (184 spans). Questions are in `docs/REVIEW_LOG.md`. **Sign-off is pending.**
+- DuwatBench finding: 38/567 "quranic" images are not verse text (surah titles/covers, a poetry title, a dhikr).
+  Relabel before M7/M8.
+- `arabic_moyassar` is served by the QuranEnc API but absent from its published translations list, so it has
+  no version number.
+
+**Done-when:** build checks ✅ · 20-ayah spot-check ✅ · reviewer sign-off ⏳ pending (items listed in REVIEW_LOG).

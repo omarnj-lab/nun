@@ -5,7 +5,7 @@ PY := $(VENV)/bin/python
 UV ?= uv
 TORCH_BACKEND ?= cu128
 
-.PHONY: setup env tier smoke-v1 corpus index test synth train eval dev deploy lint
+.PHONY: setup env tier smoke-v1 corpus spotcheck lists index test synth train eval dev deploy lint
 
 setup:  ## env + deps (Python 3.11, CUDA torch, unsloth, dev tools)
 	$(UV) python install 3.11
@@ -30,5 +30,14 @@ lint:
 test:
 	$(VENV)/bin/pytest -q
 
-corpus index synth train eval dev deploy:
+corpus:  ## download sources → data/corpus/quran.jsonl + MANIFEST.json (fails on any build check)
+	$(PY) -m nun.corpus.build
+
+spotcheck:  ## 20 random ayahs byte-for-byte against QuranEnc's per-aya endpoint
+	$(PY) scripts/spotcheck_corpus.py
+
+lists:  ## reviewer drafts: data/lists/{names,dhikr}.draft.jsonl, inscriptions.draft.yaml
+	$(PY) scripts/build_lists.py
+
+index synth train eval dev deploy:
 	@echo "'make $@' is not implemented yet (see IMPLEMENTATION.md)"; exit 1

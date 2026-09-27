@@ -6,6 +6,12 @@
 # data & artefacts (models/datasets go to Hugging Face, never git)
 data/*
 !data/.gitkeep
+# reviewer lists + corpus build evidence are committed; the corpus itself is rebuilt by `make corpus`
+!data/lists/
+!data/corpus/
+data/corpus/*
+!data/corpus/MANIFEST.json
+!data/corpus/SPOTCHECK.json
 *.safetensors
 *.bin
 *.gguf
