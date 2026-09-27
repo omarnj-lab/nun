@@ -61,3 +61,7 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
    machine must stay on through Oct 22.
 6. Git identity is set repo-locally (not globally) for the initial commit. Change it if the team wants another
    author.
+7. **Leaked HF token (urgent, 👤 Omer):** the public Kaggle notebook `engomarnajar/notebookf34951354e` has a
+   hardcoded Hugging Face access token in cell 31 (the push-to-hub cell). gitleaks caught it at commit time.
+   Our copy in `training/reference/` is redacted. **Revoke that token on huggingface.co and remove it from the
+   Kaggle notebook.** It is publicly readable.
