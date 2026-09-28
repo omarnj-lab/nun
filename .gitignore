@@ -50,3 +50,4 @@ Thumbs.db
 
 # unsloth runtime cache
 unsloth_compiled_cache/
+*.tsbuildinfo
