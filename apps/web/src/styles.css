@@ -1,0 +1,54 @@
+/* Brand tokens (SPEC §11). Light surfaces only. */
+:root {
+  --teal: #1f5e57;
+  --gold: #c9a04a;
+  --ink: #13201f;
+  --sage: #f1f5f3;
+  --line: #dce5e1;
+  --ok: #1f6b4e;
+  --warn: #a64b28;
+  --surface: #ffffff;
+  --font-ui: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-quran: "Amiri Quran", "Amiri", serif; /* Quran text only, never UI */
+  --radius: 14px;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: var(--sage);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.container { width: 100%; max-width: 720px; margin-inline: auto; padding-inline: 16px; }
+
+.header { background: var(--surface); border-bottom: 1px solid var(--line); }
+.header-row { display: flex; align-items: center; justify-content: space-between; min-height: 64px; }
+.logo { height: 36px; width: auto; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; min-width: 44px; padding: 0 20px; /* tap targets ≥ 44 px */
+  border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); font: inherit; font-weight: 500; cursor: pointer;
+}
+.btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+.btn.ghost { min-height: 44px; border-color: transparent; color: var(--teal); }
+.btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+.home { padding-block: 40px 24px; text-align: center; }
+.title { font-size: 44px; margin: 0; color: var(--teal); }
+.tagline { font-size: 18px; margin: 8px 0 28px; }
+.actions { display: flex; flex-direction: column; gap: 12px; max-width: 360px; margin-inline: auto; }
+.preview { margin: 24px auto 0; max-width: 480px; }
+.preview img { width: 100%; border-radius: var(--radius); border: 1px solid var(--line); }
+.preview figcaption { font-size: 14px; color: var(--warn); margin-top: 8px; }
+.privacy { font-size: 14px; color: #4a5a58; margin-top: 28px; }
+.footer { font-size: 13px; color: #4a5a58; padding-block: 16px 32px; text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

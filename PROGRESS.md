@@ -100,3 +100,27 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
   no version number.
 
 **Done-when:** build checks ✅ · 20-ayah spot-check ✅ · reviewer sign-off ⏳ pending (items listed in REVIEW_LOG).
+
+## 2026-09-28 · M3 tooling + M4 scaffolding `[PRE]`
+- **M3 collector** (`make commons`): walks the Commons categories from SOURCES §5 (depth 2, 2,188 files at depth
+  0 alone) and keeps only CC0/PD/CC-BY/CC-BY-SA (NC/ND/GFDL-only/fair-use rejected; tested), saving ≤1600 px
+  renditions + license/author/URL to `data/real/commons/` (gitignored). Candidate count is in the next entry.
+- **M3 labelling tool** (`make label` → http://127.0.0.1:8765, local only). Typed reading → corpus
+  location (verbatim Uthmani shown for visual confirmation; ambiguous fragments list every reference) or a
+  Names/dhikr list match → style + theme → save. Or "other"/"skip". Review mode requires a second, different
+  person; a rejection sends the image back with the note. Append-only log `eval/sets/real-test.labels.jsonl`;
+  `make realtest` compiles confirmed labels into `eval/sets/real-test.jsonl` and drops near-duplicates
+  (pHash ≤ 4) of any DuwatBench/synthetic training image.
+- **M4:** `apps/api` (FastAPI, `/api/health`, CORS locked to `WEB_ORIGIN`); `apps/web` (React 19 + Vite + TS
+  strict, brand tokens, ar RTL default / en, PWA manifest + icons, no religious text in UI strings; typecheck,
+  tests and build pass); `training/synth/render.py --smoke` renders the end of 20:114 from corpus words in
+  Amiri with RAQM shaping, visually checked against an unshaped control; `eval/` metrics (SPEC §10, unit-tested)
+  + harness: `make eval SET=duwat-heldout SYSTEM=v1-locate LIMIT=5` ran on the GPU (2/3 verses found, 0 confident
+  errors, p50 2.1 s/image; a harness check, not a result).
+- `nun/vlm/khatt_v1.py`: v1 inference wrapper; a test executes the notebook's prompt cell and asserts the prompts
+  and image policy are byte-identical.
+- **Bugs found by tests and fixed:** (1) inline comments in `.env.example` were read as values, e.g.
+  `WEB_ORIGIN` = "# the web app origin…", which would have broken CORS in production. Comments are now on their
+  own lines and blank values mean "default". (2) A hand-typed Uthmani test string differed from the corpus in
+  diacritic order. Tests now compare against the corpus, never typed Quran text.
+- `docs/PRIOR_WORK.md` written; tag `pre-challenge` created (see below).
