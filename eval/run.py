@@ -19,7 +19,7 @@ from eval.systems import SYSTEMS
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--set", required=True, choices=["duwat-heldout", "real-test"])
+    ap.add_argument("--set", required=True, choices=["duwat-heldout", "duwat-test", "real-test"])
     ap.add_argument("--system", required=True, choices=sorted(SYSTEMS))
     ap.add_argument("--limit", type=int)
     ap.add_argument("--out", type=Path, default=Path("eval/results"))

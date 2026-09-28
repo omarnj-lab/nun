@@ -1,6 +1,7 @@
-"""Compile reviewed labels → eval/sets/real-test.jsonl (SPEC §10 format) + leakage check.
+"""Compile reviewed test set B labels (Commons photos) → eval/sets/real-test.jsonl (SPEC §10 format) + leakage check.
 
-Only labels CONFIRMED by a second person are included; "skip" labels are dropped. Every included image is
+Only labels CONFIRMED by a person other than the labeller are included; "skip" labels are dropped. Labels proposed
+by Claude and confirmed by a person are marked model_assisted (disclosed with the results). Every included image is
 perceptual-hashed against all DuwatBench (training) images and, when present, data/synth images: any pair within
 Hamming distance ≤ 4 is excluded and reported (the real-test set must never overlap training data).
 """
@@ -16,7 +17,7 @@ import imagehash
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
-from label_tool.app import IMAGES, candidates, image_id, state  # noqa: E402
+from label_tool.app import candidates, image_id, image_path, state  # noqa: E402
 
 OUT = Path("eval/sets/real-test.jsonl")
 REPORT = Path("eval/sets/real-test.report.json")
@@ -37,17 +38,18 @@ def training_hashes() -> list[tuple[str, imagehash.ImageHash]]:
 
 def main() -> None:
     st = state()
-    by_id = {image_id(c): c for c in candidates()}
+    by_id = {image_id(c): c for c in candidates("commons")}
     rows = []
     for cid, s in st.items():
         lab, rev = s.get("label"), s.get("review")
-        if not lab or not rev or rev["verdict"] != "confirm" or lab["gt_type"] == "skip":
+        if cid not in by_id or not lab or not rev or rev["verdict"] != "confirm" or lab["gt_type"] == "skip":
             continue
         c = by_id[cid]
         rows.append(
             {
                 "id": cid,
-                "file": f"data/real/commons/{c['file']}",
+                "file": str(image_path(c)),
+                "model_assisted": lab["labeller"].startswith("claude"),
                 "source_url": c["source_url"],
                 "license": c["license"],
                 "license_url": c.get("license_url"),
@@ -65,7 +67,7 @@ def main() -> None:
     train = training_hashes()
     leaks = []
     for r in rows:
-        h = imagehash.phash(Image.open(IMAGES / r["file"].removeprefix("data/real/commons/")).convert("RGB"))
+        h = imagehash.phash(Image.open(r["file"]).convert("RGB"))
         near = [(name, h - th) for name, th in train if h - th <= MAX_HAMMING]
         if near:
             leaks.append({"id": r["id"], "matches": near[:3]})

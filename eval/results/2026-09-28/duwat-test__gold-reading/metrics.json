@@ -1,0 +1,36 @@
+{
+  "n": 184,
+  "mix": {
+    "quran": 103,
+    "name": 2,
+    "dhikr": 39,
+    "other": 40
+  },
+  "verse_id_top1": 1.0,
+  "verse_id_top5": 1.0,
+  "coverage": 1.0,
+  "selective_accuracy": 0.8264,
+  "confident_error_rate": 0.0054,
+  "confident_errors": [
+    "duwat-62"
+  ],
+  "abstention_correctness": 0.925,
+  "reading": {
+    "cer": 0.0,
+    "wer": 0.0,
+    "n": 184
+  },
+  "status_counts": {
+    "partial": 114,
+    "verified": 33,
+    "uncertain": 37,
+    "out_of_scope": 0
+  },
+  "latency_ms": {
+    "p50": 0,
+    "p95": 108
+  },
+  "set": "duwat-test",
+  "system": "gold-reading",
+  "limit": null
+}

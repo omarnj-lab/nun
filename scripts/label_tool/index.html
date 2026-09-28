@@ -12,7 +12,8 @@
   body { margin:0; font-family:"IBM Plex Sans Arabic",system-ui,sans-serif; color:var(--ink); background:var(--sage); }
   header { display:flex; gap:16px; align-items:center; padding:10px 16px; background:var(--teal); color:#fff; flex-wrap:wrap; }
   header b { font-size:18px; } header .sp { flex:1; }
-  header input { padding:6px 8px; border-radius:6px; border:0; width:140px; }
+  header input, header select { padding:6px 8px; border-radius:6px; border:0; }
+  header input { width:140px; }
   header button { background:#fff2; color:#fff; border:1px solid #fff6; }
   header button.on { background:var(--gold); border-color:var(--gold); color:var(--ink); }
   main { display:grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap:16px; padding:16px; }
@@ -40,6 +41,11 @@
 <header>
   <b>نون · labelling</b>
   <button id="mLabel" class="on">Label</button><button id="mReview">Review</button>
+  <select id="src" title="Which images">
+    <option value="">All images</option>
+    <option value="duwat">Set A · DuwatBench held-out</option>
+    <option value="commons">Set B · Commons photos</option>
+  </select>
   <span class="sp"></span>
   <span>Your name <input id="who" placeholder="e.g. Saeed"></span>
   <span id="stats"></span>
@@ -58,6 +64,7 @@ const who = () => $("#who").value.trim();
 $("#who").value = localStorage.getItem("nun-who") || "";
 $("#who").onchange = () => { localStorage.setItem("nun-who", who()); load(); };
 $("#mLabel").onclick = () => setMode("label"); $("#mReview").onclick = () => setMode("review");
+$("#src").onchange = () => { skipped = []; load(); };
 function setMode(m){ mode=m; skipped=[]; $("#mLabel").classList.toggle("on",m==="label"); $("#mReview").classList.toggle("on",m==="review"); load(); }
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
@@ -70,10 +77,10 @@ async function refreshStats(){ const s = await api("/api/stats"); $("#stats").te
 async function load(){
   meta = meta || await api("/api/meta");
   refreshStats();
-  cur = await api(`/api/item?mode=${mode}&who=${encodeURIComponent(who())}&skip=${skipped.join(",")}`);
+  cur = await api(`/api/item?mode=${mode}&who=${encodeURIComponent(who())}&skip=${skipped.join(",")}&src=${$("#src").value}`);
   if(!cur.id){ $("#img").removeAttribute("src"); $("#meta").textContent=""; $("#panel").innerHTML = `<p>Nothing left to ${mode}. 🎉</p>`; return; }
   const c = cur.candidate;
-  $("#img").src = "/img/" + c.file;
+  $("#img").src = `/img/${c._src}/${c.file}`;
   $("#meta").innerHTML = `${esc(c.title)} · ${esc(c.license)} · ${esc(c.author || c.credit || "")} · <a href="${esc(c.source_url)}" target="_blank" rel="noopener">source</a> · ${c.width}×${c.height} · ${esc(c.category)}`;
   mode === "label" ? labelForm() : reviewForm();
 }

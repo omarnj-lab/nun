@@ -18,14 +18,13 @@ pytestmark = pytest.mark.skipif(not Path("data/corpus/quran.jsonl").exists(), re
 def client(tmp_path, monkeypatch) -> TestClient:
     (tmp_path / "images").mkdir()
     Image.new("RGB", (8, 8)).save(tmp_path / "images" / "a.jpg")
-    cands = tmp_path / "candidates.jsonl"
+    cands = tmp_path / "candidates.jsonl"  # tmp_path acts as the "commons" source dir
     rows = [
         {"title": f"File:{n}.jpg", "file": "images/a.jpg", "sha1_original": n * 12, "source_url": "u", "license": "CC0"}
         for n in ("a", "b")
     ]
     cands.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
-    monkeypatch.setattr(lt, "CANDIDATES", cands)
-    monkeypatch.setattr(lt, "IMAGES", tmp_path)
+    monkeypatch.setattr(lt, "SOURCES", {"commons": tmp_path, "duwat": tmp_path / "none"})
     monkeypatch.setattr(lt, "LOG", tmp_path / "log.jsonl")
     return TestClient(lt.app)
 
@@ -67,4 +66,6 @@ def test_rejects_bad_refs(client: TestClient) -> None:
 
 
 def test_image_path_traversal_blocked(client: TestClient) -> None:
-    assert client.get("/img/../candidates.jsonl").status_code == 404
+    assert client.get("/img/commons/../candidates.jsonl").status_code == 404
+    assert client.get("/img/nosuchsource/images/a.jpg").status_code == 404
+    assert client.get("/img/commons/images/a.jpg").status_code == 200

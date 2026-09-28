@@ -26,8 +26,9 @@ from nun.corpus.fragment import QuranIndex, locate_fuzzy, ref_key, ref_str
 from nun.corpus.store import CorpusStore
 from nun.normalize.arabic import normalize, normalize_ns
 
-CANDIDATES = Path("data/real/commons/candidates.jsonl")
-IMAGES = Path("data/real/commons")
+# image sources: <dir>/candidates.jsonl lists the images, whose "file" is relative to <dir>
+#   commons → test set B (Wikimedia Commons photos)   duwat → test set A (DuwatBench held-out, auto-labelled)
+SOURCES = {"commons": Path("data/real/commons"), "duwat": Path("data/real/duwat_test")}
 LOG = Path("eval/sets/real-test.labels.jsonl")
 LISTS = Path("data/lists")
 STYLES = ["Thuluth", "Diwani", "Naskh", "Kufic", "Ruq'ah", "Nasta'liq"]
@@ -47,7 +48,11 @@ app = FastAPI(title="Nūn labelling tool")
 
 
 def image_id(c: dict) -> str:
-    return "rt-" + c["sha1_original"][:12]
+    return c.get("id") or "rt-" + c["sha1_original"][:12]
+
+
+def image_path(c: dict) -> Path:
+    return SOURCES[c["_src"]] / c["file"]
 
 
 @lru_cache
@@ -69,10 +74,14 @@ def lists() -> dict[str, list[dict]]:
     return out
 
 
-def candidates() -> list[dict]:
-    if not CANDIDATES.exists():
-        return []
-    return [json.loads(line) for line in CANDIDATES.open(encoding="utf-8")]
+def candidates(src: str | None = None) -> list[dict]:
+    out = []
+    for name, root in SOURCES.items():
+        path = root / "candidates.jsonl"
+        if (src and name != src) or not path.exists():
+            continue
+        out += [json.loads(line) | {"_src": name} for line in path.open(encoding="utf-8")]
+    return out
 
 
 def state() -> dict[str, dict]:
@@ -102,17 +111,20 @@ def page() -> str:
     return (Path(__file__).parent / "index.html").read_text(encoding="utf-8")
 
 
-@app.get("/img/{name:path}")
-def img(name: str) -> FileResponse:
-    p = (IMAGES / name).resolve()
-    if IMAGES.resolve() not in p.parents or not p.exists():
+@app.get("/img/{src}/{name:path}")
+def img(src: str, name: str) -> FileResponse:
+    root = SOURCES.get(src)
+    if root is None:
+        raise HTTPException(404)
+    p = (root / name).resolve()
+    if root.resolve() not in p.parents or not p.exists():
         raise HTTPException(404)
     return FileResponse(p)
 
 
 @app.get("/api/meta")
 def meta() -> dict:
-    return {"styles": STYLES, "themes": THEMES}
+    return {"styles": STYLES, "themes": THEMES, "sources": list(SOURCES)}
 
 
 @app.get("/api/stats")
@@ -127,10 +139,10 @@ def stats() -> dict:
 
 
 @app.get("/api/item")
-def item(mode: Literal["label", "review"] = "label", who: str = "", skip: str = "") -> dict:
+def item(mode: Literal["label", "review"] = "label", who: str = "", skip: str = "", src: str = "") -> dict:
     st = state()
     skipped = set(filter(None, skip.split(",")))
-    for c in candidates():
+    for c in candidates(src or None):
         cid = image_id(c)
         if cid in skipped:
             continue

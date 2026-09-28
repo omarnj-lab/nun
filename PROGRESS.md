@@ -124,3 +124,26 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
   own lines and blank values mean "default". (2) A hand-typed Uthmani test string differed from the corpus in
   diacritic order. Tests now compare against the corpus, never typed Quran text.
 - `docs/PRIOR_WORK.md` written; tag `pre-challenge` created (see below).
+
+## 2026-09-28 · M3 test set redesigned (team decision: A + B)
+- **Problem:** Commons has no Quranic-inscription category. The broad categories (399 photos collected) are mostly
+  name panels and manuscripts, and there is no time to hand-label 150–200 photos. SPEC §10's single real-test set
+  becomes:
+- **Set A (headline):** 184 DuwatBench images held out from all training (`eval/sets/duwatbench_split.json`,
+  train 906 / validation 182 / test 184, with v1's grouping so near-duplicates never straddle splits).
+  v1's exact split (seed 3909) does not reproduce on the current dataset/library versions (no seed of 5,000 puts
+  all 50 known held-out rows in test; best 34/50), so the test split is built around the 50 rows v1 certainly
+  never saw. **v1-vs-v2 is compared only on those 50 (`duwat-heldout`); other systems on all 184
+  (`duwat-test`).** Labels come from DuwatBench's annotators, with verse references by corpus lookup
+  (103 Quran, 39 dhikr, 2 Names, 40 other; 58 of the 66 multi-reference labels are the Basmala at 1:1/27:30).
+  Devotional-category images are matched to the dhikr list before the Quran (REVIEW_LOG question #2 stays open).
+  Spot-check in the label tool (Review mode → "Set A"); a rejection sends the image back for a human label.
+- **Set B (real-world photos):** targeted collector (`--targeted`, 50 per category from Basmala, Thuluth
+  inscriptions, Mihrabs, Arabic inscriptions, Shahada → 250 photos) + a 60-photo sample of the broad pool. It is
+  pre-labelled by `claude-opus-5` vision (`scripts/prelabel_claude.py`, structured output, fallbacks on); the verse
+  reference comes from the corpus lookup, and a model-only guess is marked UNVERIFIED. A person confirms in Review
+  mode. Compiled rows carry `model_assisted: true` (disclose with results: slight bias towards the Claude baseline).
+- **BLOCKED:** the Anthropic API returns "credit balance is too low" (5 trial calls, $0 spent). Estimated cost for
+  ~310 images: ~$15 (unmeasured; the script prints measured cost after `--limit 5`).
+- Gold-reading upper bound on set A (search + temporary gate only, no vision): top-1 1.0, selective accuracy 0.83,
+  confident-error rate 0.5% (1/184), abstention 0.93. This shows what the M5 gate must fix, not a result.

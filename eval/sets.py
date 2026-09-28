@@ -38,8 +38,16 @@ def _list(kind: str) -> list[dict]:
 
 
 def auto_ground_truth(text: str, category: str) -> dict:
-    """Ground truth from gold text: quran (exact, all occurrences; else fuzzy ≥ 90) → name → dhikr → other."""
+    """Ground truth from gold text. Order follows the annotators' category: an image they classed as a devotional
+    invocation is matched against the dhikr list BEFORE the Quran (short phrases like «ما شاء الله» also occur in
+    verses; whether to present them as verse or dhikr is open question #2 in docs/REVIEW_LOG.md).
+    quranic: quran (exact, all occurrences; else fuzzy ≥ 90) → name → dhikr → other."""
     idx, q_ns, q_norm = _index(), normalize_ns(text), normalize(text)
+    if category != "quranic":
+        for kind, gt_type in (("names", "name"), ("dhikr", "dhikr")):
+            ids = [e["id"] for e in _list(kind) if e["text_norm"] == q_norm]
+            if ids:
+                return {"gt_type": gt_type, "refs": [], "list_ids": ids}
     if category in ("quranic", "devotional invocation") and len(q_ns) >= 2:
         hits = idx.find_exact(q_ns) or (idx.find_exact(q_ns, whole_words=False) if len(q_ns) >= 8 else [])
         spans = [idx.span(*h) for h in hits]
@@ -75,6 +83,30 @@ def load(name: str, limit: int | None = None) -> Iterator[tuple[dict, Callable[[
                 **auto_ground_truth(text, s["category"]),
             }
             yield gt, (lambda s=s: s["image"].convert("RGB"))
+    elif name == "duwat-test":
+        # test set A: labels from the label log (auto labels, plus any human corrections); an image whose latest
+        # review is a rejection is left out until it is relabelled
+        import sys
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        from datasets import load_dataset
+        from label_tool.app import state
+
+        st = state()
+        ds = load_dataset("MBZUAI/DuwatBench", split="train")
+        split = json.loads(Path("eval/sets/duwatbench_split.json").read_text(encoding="utf-8"))
+        taken = 0
+        for row_index in split["test"]:
+            s_ = st.get(f"duwat-{row_index}", {})
+            lab, rev = s_.get("label"), s_.get("review")
+            if not lab or lab["gt_type"] == "skip" or (rev and rev["verdict"] == "reject"):
+                continue
+            if limit is not None and taken >= limit:
+                break
+            taken += 1
+            gt = {k: lab[k] for k in ("id", "gt_type", "refs", "list_ids", "gt_text", "style", "theme")}
+            gt["labels"] = "human-reviewed" if rev else lab["labeller"]
+            yield gt, (lambda s=ds[row_index]: s["image"].convert("RGB"))
     elif name == "real-test":
         rows = [json.loads(line) for line in Path("eval/sets/real-test.jsonl").open(encoding="utf-8")]
         for gt in rows[:limit]:
