@@ -20,12 +20,14 @@ import base64
 import io
 import json
 import random
+import re
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import anthropic
+from dotenv import load_dotenv
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -138,6 +140,64 @@ def ask(client: anthropic.Anthropic, path: Path) -> tuple[dict | None, dict]:
     return json.loads(text), usage | {"stop": resp.stop_reason}
 
 
+MAX_OCCURRENCES = 12  # a line found in more places than this (e.g. «الله», «رسوله») cannot identify a verse
+
+
+def clean_reading(transcription: str) -> str:
+    """Drop the model's layout notes: «(…)» parentheticals and «label:» prefixes (inscriptions never contain ':')."""
+    lines = []
+    for line in transcription.splitlines():
+        line = re.sub(r"\([^)]*\)", " ", line)
+        lines.append(line.rsplit(":", 1)[-1])
+    return "\n".join(lines)
+
+
+def locate_lines(transcription: str) -> tuple[list[dict], str, str]:
+    """Locate a multi-line reading line by line → (merged refs, corpus fragments, how).
+
+    Each segment (split on newlines and [؟]) is located on its own. A Basmala is treated as a sura header when other
+    lines are located. Segments found in several places keep only the occurrences inside a sura that another,
+    unambiguous segment pins down. Located ayahs of one sura are merged into ranges (gaps ≤ 2 ayahs).
+    """
+    idx = _index()
+    basmala_ns = "".join(w.ns for w in idx.words[:4])  # 1:1
+    found: list[tuple[str, list[dict]]] = []
+    fuzzy_scores = []
+    for seg in split_segments(clean_reading(transcription)):
+        q_ns = normalize_ns(seg)
+        if len(q_ns) < 4:
+            continue
+        hits = idx.find_exact(q_ns) or (idx.find_exact(q_ns, whole_words=False) if len(q_ns) >= 8 else [])
+        if len(hits) > MAX_OCCURRENCES:
+            continue
+        spans = [s for s in (idx.span(*h) for h in hits) if not s["cross_sura"]]
+        if not spans and len(q_ns) >= 8 and (got := locate_fuzzy(idx, q_ns)) and got[1] >= 85:
+            spans = [got[0]]  # spelling variants, e.g. رحمة read where the Quranic rasm has رحمت
+            fuzzy_scores.append(round(got[1]))
+        if spans:
+            found.append((q_ns, spans))
+    if len(found) > 1:
+        found = [f for f in found if f[0] != basmala_ns] or found
+    if not found:
+        return [], "", "not found"
+    how = "line by line: exact" + (f" + fuzzy {fuzzy_scores}" if fuzzy_scores else "")
+    pinned = {f[1][0]["sura"] for f in found if len({s["sura"] for s in f[1]}) == 1}
+    spans = []
+    for _, sp in found:
+        kept = [s for s in sp if s["sura"] in pinned] if pinned else sp
+        spans += kept or sp
+    by_sura: dict[int, list[dict]] = {}
+    for s in sorted(spans, key=lambda s: (s["sura"], s["aya_from"])):
+        rs = by_sura.setdefault(s["sura"], [])
+        if rs and s["aya_from"] <= rs[-1]["aya_to"] + 2:
+            rs[-1]["aya_to"] = max(rs[-1]["aya_to"], s["aya_to"])
+        else:
+            rs.append({"sura": s["sura"], "aya_from": s["aya_from"], "aya_to": s["aya_to"]})
+    refs = [r for rs in by_sura.values() for r in rs]
+    frags = " | ".join(dict.fromkeys(s["fragment"] for s in spans))
+    return refs, frags, how
+
+
 def to_label(cid: str, out: dict) -> dict:
     """Turn Claude's reading into a label event; the Quran reference comes from the corpus."""
     base = {"event": "label", "id": cid, "labeller": LABELLER, "refs": [], "list_ids": []}
@@ -150,21 +210,15 @@ def to_label(cid: str, out: dict) -> dict:
         notes.append(f"model notes: {out['notes']}")
     ctype = out["content_type"]
     if ctype == "quran":
-        idx = _index()
-        q_ns = "".join(normalize_ns(s) for s in split_segments(out["transcription"]))
-        hits = idx.find_exact(q_ns) or (idx.find_exact(q_ns, whole_words=False) if len(q_ns) >= 8 else [])
-        spans = [s for s in (idx.span(*h) for h in hits) if not s["cross_sura"]]
-        how = "exact"
-        if not spans and len(q_ns) >= 8 and (got := locate_fuzzy(idx, q_ns)) and got[1] >= 85:
-            spans, how = [got[0]], f"fuzzy {got[1]:.0f}"
+        refs, frag, how = locate_lines(out["transcription"])
         guess = out["quran_ref"]
-        if spans:
-            refs = [{k: s[k] for k in ("sura", "aya_from", "aya_to")} for s in spans]
+        if refs:
             agree = any(r["sura"] == guess["sura"] and r["aya_from"] <= guess["aya_from"] <= r["aya_to"] for r in refs)
             notes.append(
                 f"corpus {how}; model guess {guess['sura']}:{guess['aya_from']} {'agrees' if agree else 'DISAGREES'}"
             )
-            frag = " | ".join(s["fragment"] for s in spans[:1])
+            if len(refs) > 4:
+                notes.append(f"WEAK: the readable fragment occurs in {len(refs)} places; confirm only if it is clear")
             return base | {"gt_type": "quran", "refs": refs, "gt_text": frag, "notes": " · ".join(notes)}
         if guess["sura"]:
             notes.append("UNVERIFIED: reading not found in corpus; reference is the model's guess only")
@@ -173,8 +227,9 @@ def to_label(cid: str, out: dict) -> dict:
         notes.append("model said quran but gave no reference and the reading is not in the corpus")
     if ctype in ("name_of_allah", "dhikr_or_dua"):
         kind = "names" if ctype == "name_of_allah" else "dhikr"
-        q_norm = normalize(" ".join(split_segments(out["transcription"])))
-        ids = [e["id"] for e in _list(kind) if e["text_norm"] == q_norm or e["text_norm"] in q_norm.split(" | ")]
+        lines = split_segments(out["transcription"])  # normalised, in reading order
+        segs = set(lines) | {normalize(" ".join(lines))}
+        ids = [e["id"] for e in _list(kind) if e["text_norm"] in segs]
         if ids:
             gt = "name" if kind == "names" else "dhikr"
             return base | {"gt_type": gt, "list_ids": ids, "notes": " · ".join(notes)}
@@ -186,8 +241,25 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int)
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--rederive", action="store_true", help="rebuild labels from saved outputs; no API calls")
     args = ap.parse_args()
     st = state()
+    if args.rederive:
+        changed = 0
+        keys = ("gt_type", "refs", "list_ids", "gt_text", "notes")
+        for line in RAW.open(encoding="utf-8"):
+            row = json.loads(line)
+            prev = st.get(row["id"], {})
+            old = prev.get("label", {})
+            # only unreviewed pre-labels are refreshed; human labels and reviewed items are never touched
+            if row["output"] is None or old.get("labeller") != LABELLER or "review" in prev:
+                continue
+            new = to_label(row["id"], row["output"])
+            if any(old.get(k) != new[k] for k in keys):
+                append(new)
+                changed += 1
+        print(f"re-derived: {changed} labels changed")
+        return
     todo = [c for c in candidates("commons") if image_id(c) not in st]
     targeted = [c for c in todo if c.get("pool") == "targeted"]
     broad = [c for c in todo if c.get("pool") != "targeted"]
@@ -196,6 +268,7 @@ def main() -> None:
     queue = (targeted + sample)[: args.limit]
     print(f"pre-labelling {len(queue)} images ({len(targeted)} targeted, {len(sample)} broad-pool sample)")
 
+    load_dotenv(override=True)  # the key in .env wins over any stale ANTHROPIC_API_KEY in the shell
     client = anthropic.Anthropic()
     lock = threading.Lock()
     totals = {"in": 0, "out": 0, "done": 0, "failed": 0}

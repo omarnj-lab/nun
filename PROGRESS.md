@@ -147,3 +147,14 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
   ~310 images: ~$15 (unmeasured; the script prints measured cost after `--limit 5`).
 - Gold-reading upper bound on set A (search + temporary gate only, no vision): top-1 1.0, selective accuracy 0.83,
   confident-error rate 0.5% (1/184), abstention 0.93. This shows what the M5 gate must fix, not a result.
+
+## 2026-09-29 · Set B pre-labelled
+- New API key stored in `.env` only (gitignored; the script loads it with override). 309 Commons images
+  (250 targeted + 59 broad) pre-labelled by `claude-opus-5`: 0 failures, **$9.81 measured** (≈ $0.032/image).
+- Result: 43 Quran · 44 dhikr · 18 Names · 112 other · 92 auto-skipped (86 not calligraphy/unreadable,
+  6 identifiable person). 8 Quran labels flagged WEAK (fragment occurs in > 4 places), 1 UNVERIFIED (model guess).
+- Locator fixes found by reviewing the trial output, re-derived from the saved outputs at no API cost:
+  line-by-line location (a Basmala header no longer hides the verse, e.g. 19:1–2); per-line fuzzy matching
+  for spelling variants (رحمة vs the rasm رحمت); the model's layout notes «(…)» and «label:» are stripped; lines
+  found in > 12 places («الله», «رسوله») are ignored. 7 new tests (68 total).
+- Next (people): Review mode → Set B, confirm/reject; `make realtest` compiles confirmed labels.
