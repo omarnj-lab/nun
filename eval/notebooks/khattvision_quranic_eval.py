@@ -47,11 +47,14 @@ DATASET_REVISION = "ea1dbb473aa59990acf21e6841fd62fe6aaf04e1"
 SPLIT_FILE = "metadata/reproduced_training_split.csv"
 
 MAX_NEW_TOKENS = 192
-MAX_IMAGE_PIXELS = 448 * 448
-MAX_IMAGE_SIDE = 896
+# Resolution (local change): RES=448 reproduces the notebook (448² area, 896 side); RES=896 → 896² area, 1792 side
+# (same side/area ratio as the notebook). v1 was trained at 448², so higher RES is out of its training distribution.
+RES = int(os.environ.get("RES", "448"))
+MAX_IMAGE_PIXELS = RES * RES
+MAX_IMAGE_SIDE = 2 * RES
 EVAL_LIMIT = None  # Keep None to evaluate all 567 images.
 
-WORK_DIR = Path("data/eval_quranic")
+WORK_DIR = Path("data/eval_quranic" + ("" if RES == 448 else f"_{RES}"))
 WORK_DIR.mkdir(parents=True, exist_ok=True)
 PREDICTIONS_JSONL = WORK_DIR / "quranic_ocr_predictions.jsonl"
 
@@ -117,7 +120,7 @@ assert transformers.__version__ == "5.15.0", transformers.__version__
 model, processor = FastModel.from_pretrained(
     model_name=ADAPTER_MODEL,
     revision=ADAPTER_REVISION,
-    max_seq_length=1024,
+    max_seq_length=1024 if RES == 448 else 4096,  # 896² ≈ 1,024 vision tokens alone
     load_in_4bit=True,
     use_gradient_checkpointing=False,
     offload_embedding=False,
