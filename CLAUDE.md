@@ -1,3 +1,5 @@
+PLAN_NOW.md overrides IMPLEMENTATION.md and SPEC.md where they differ.
+
 # نون · Nūn
 
 Point a phone at Arabic calligraphy (mosques, museums, heritage sites) → Nūn identifies **which** Quran verse / Name of Allah / supplication it is, verifies it against a closed trusted corpus, shows a card (verse, reference, approved translation in the visitor's language, human recitation), then lets the visitor chat with an agent that answers **only from approved sources**. When unsure, it abstains and refers to a human guide.
