@@ -79,6 +79,7 @@ Useful Commons categories (verified to exist): `Islamic calligraphy` (500+ files
 | `Omartificial-Intelligence-Space/ARA-Reranker-V1` (or `NAMAA-Space/GATE-Reranker-V1`) | Candidate reranking | HF | ✅ team-owned |
 | `Omartificial-Intelligence-Space/Arabic-labse-Matryoshka` | Cross-lingual search (related verses from non-Arabic questions) | HF | ✅ team-owned |
 | `NAMAA-Space/NAMAA-Saudi-TTS` | Optional Arabic TTS for **non-Quranic** UI text | HF (MIT) | ✅ team-owned |
+| `facebook/dinov2-small` | Global image embedding for panel photo matching (shortlist before SIFT + RANSAC verification) | HF (Apache-2.0) | ✅ |
 | Claude `claude-opus-5` (Anthropic API) | Chat agent + router; zero-shot vision baseline | api.anthropic.com | ✅ needs `ANTHROPIC_API_KEY` |
 
 ## 7. Challenge documents (reference only, not redistributed)

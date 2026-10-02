@@ -158,3 +158,14 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
   for spelling variants (رحمة vs the rasm رحمت); the model's layout notes «(…)» and «label:» are stripped; lines
   found in > 12 places («الله», «رسوله») are ignored. 7 new tests (68 total).
 - Next (people): Review mode → Set B, confirm/reject; `make realtest` compiles confirmed labels.
+
+## 2026-10-03 · Photo-matching test (PLAN_NOW, [PRE])
+- `nun/match/matcher.py`: DINOv2-small shortlist → RootSIFT + RANSAC → accept if ≥ 20 inliers AND ≥ 40% centre
+  coverage. `scripts/match_test.py`: 150 Commons collection photos, 450 simulated visitor photos (easy/medium/hard),
+  793 unknown images (Commons + internal FIC).
+- Result: right panel 100% / 98.7% / 92.7%, wrong panel 0; unknowns accepted 3/793, all three verified by eye as the
+  same physical panel (another photo / crop), so 0 genuine false matches. p50 0.42 s.
+- Found and fixed: inlier counts alone accepted 42 unknowns (shared ornamental frame templates, chance matches on
+  text pages); the centre-coverage check fixed it. Details: `eval/results/2026-10-02/photo_matching/FINDINGS.md`.
+- Still needed: the team's own repeat photos (`data/match_test/real_queries/<collection-stem>__*.jpg`) to replace
+  the simulated ones.
