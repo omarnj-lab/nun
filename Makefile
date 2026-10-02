@@ -5,7 +5,7 @@ PY := $(VENV)/bin/python
 UV ?= uv
 TORCH_BACKEND ?= cu128
 
-.PHONY: setup env tier smoke-v1 corpus spotcheck lists commons label realtest review-export review-import render-smoke dev-api dev-web index test synth train eval deploy lint
+.PHONY: setup env tier smoke-v1 corpus spotcheck lists commons label realtest review-export review-import review-remote render-smoke dev-api dev-web index test synth train eval deploy lint
 
 setup:  ## env + deps (Python 3.11, CUDA torch, unsloth, dev tools)
 	$(UV) python install 3.11
@@ -68,6 +68,9 @@ review-export:  ## M1: Sharia review spreadsheet → docs/review/Nun_content_rev
 
 review-import:  ## M1: import the filled review spreadsheet (approved items → final lists + REVIEW_LOG)
 	PYTHONPATH=. $(PY) scripts/review_sheet.py import
+
+review-remote:  ## panel review app via Cloudflare quick tunnel (login from .env REVIEW_PASSWORD)
+	bash scripts/review_remote.sh
 
 index synth train deploy:
 	@echo "'make $@' is not implemented yet (see IMPLEMENTATION.md)"; exit 1

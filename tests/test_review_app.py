@@ -17,6 +17,7 @@ FIELDS += ["confirmed_ref", "type", "panel_group", "notes"]
 
 @pytest.fixture
 def client(tmp_path, monkeypatch) -> TestClient:
+    monkeypatch.delenv("REVIEW_PASSWORD", raising=False)
     (tmp_path / "raw").mkdir()
     rows = []
     for i in range(3):
@@ -64,3 +65,16 @@ def test_search_by_ref_and_words(client) -> None:
 
 def test_image_traversal_blocked(client) -> None:
     assert client.get("/img/..%2Freview.csv").status_code == 404
+
+
+def test_password_required_when_set(client, monkeypatch) -> None:
+    import base64
+
+    monkeypatch.setenv("REVIEW_PASSWORD", "s3cret")
+    monkeypatch.setenv("REVIEW_USER", "nun")
+    assert client.get("/api/panels").status_code == 401
+    assert client.get("/img/p0.jpg").status_code == 401
+    bad = base64.b64encode(b"nun:wrong").decode()
+    assert client.get("/api/panels", headers={"Authorization": f"Basic {bad}"}).status_code == 401
+    good = base64.b64encode(b"nun:s3cret").decode()
+    assert client.get("/api/panels", headers={"Authorization": f"Basic {good}"}).status_code == 200

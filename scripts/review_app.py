@@ -6,21 +6,29 @@
 Each panel is shown large with its 5 verse suggestions as buttons; a search box over the Quran (Arabic words or a
 reference such as 2:255 / 2:255-256) when none is right; buttons for Name of Allah / dhikr / not Quran-other; and
 "same panel as #…" to group photos of one physical panel. Every choice is written to review.csv immediately.
+
+Remote reviewers: set REVIEW_PASSWORD (and optionally REVIEW_USER, default "nun") in .env; every request then needs
+that login (HTTP Basic). Always set it before exposing the app through a tunnel: make review-remote.
 """
 
 from __future__ import annotations
 
+import base64
 import csv
 import os
 import re
+import secrets
 import sys
 import tempfile
 import threading
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
+
+load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "analysis" / "v1_verse_id"))
 import verse_id_eval as vid  # noqa: E402
@@ -29,7 +37,19 @@ PANELS = Path("data/panels")
 REVIEW = PANELS / "review.csv"
 TYPES = ["quran", "name_of_allah", "dhikr", "other"]
 _lock = threading.Lock()
-app = FastAPI(title="Nūn panel review")
+app = FastAPI(title="Nūn panel review", docs_url=None, redoc_url=None, openapi_url=None)
+
+
+@app.middleware("http")
+async def basic_auth(request: Request, call_next):
+    password = os.environ.get("REVIEW_PASSWORD", "")
+    if password:
+        user = os.environ.get("REVIEW_USER", "nun")
+        expected = "Basic " + base64.b64encode(f"{user}:{password}".encode()).decode()
+        if not secrets.compare_digest(request.headers.get("authorization", ""), expected):
+            return Response("Login required", status_code=401, headers={"WWW-Authenticate": 'Basic realm="Nun review"'})
+    return await call_next(request)
+
 
 # search index: (sura, aya, uthmani, normalised text) for every ayah
 AYAHS = [(s, a, t, vid.norm(t, "drop")) for s, a, t in vid.Q]
