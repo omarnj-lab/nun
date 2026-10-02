@@ -36,11 +36,11 @@ OUT = PANELS / "readings.jsonl"
 OCR_INSTRUCTION = "اقرأ جميع النصوص العربية الظاهرة في لوحة الخط. أعد النص فقط دون شرح، وافصل المقاطع بسطر جديد."
 
 
-def prepare_image_for_model(image):  # notebook cell 10
+def prepare_image_for_model(image, max_pixels: int = MAX_IMAGE_PIXELS, max_side: int = MAX_IMAGE_SIDE):  # cell 10
     image = image.convert("RGB")
     width, height = image.size
-    area_scale = math.sqrt(MAX_IMAGE_PIXELS / max(width * height, 1))
-    side_scale = MAX_IMAGE_SIDE / max(width, height)
+    area_scale = math.sqrt(max_pixels / max(width * height, 1))
+    side_scale = max_side / max(width, height)
     scale = min(1.0, area_scale, side_scale)
     if scale >= 1.0:
         return image
@@ -49,7 +49,8 @@ def prepare_image_for_model(image):  # notebook cell 10
     return image.resize((new_width, new_height), Image.Resampling.BICUBIC)
 
 
-def main() -> None:
+def load_predictor(max_pixels: int = MAX_IMAGE_PIXELS, max_side: int = MAX_IMAGE_SIDE):
+    """Load v1 exactly as the notebook does (cells 8 and 10) → predict_ocr(image) -> reading."""
     model, processor = FastModel.from_pretrained(  # notebook cell 8
         model_name=ADAPTER_MODEL,
         revision=ADAPTER_REVISION,
@@ -73,9 +74,10 @@ def main() -> None:
 
     @torch.inference_mode()
     def predict_ocr(image):  # notebook cell 10
-        inputs = processor(
-            text=[prompt], images=[[prepare_image_for_model(image)]], add_special_tokens=False, return_tensors="pt"
-        ).to(torch.device("cuda:0"))
+        img = prepare_image_for_model(image, max_pixels, max_side)
+        inputs = processor(text=[prompt], images=[[img]], add_special_tokens=False, return_tensors="pt").to(
+            torch.device("cuda:0")
+        )
         generation_config = copy.deepcopy(model.generation_config)
         generation_config.max_length = None
         generation_config.max_new_tokens = MAX_NEW_TOKENS
@@ -85,6 +87,11 @@ def main() -> None:
         new_tokens = output_ids[:, inputs["input_ids"].shape[1] :]
         return processor.tokenizer.batch_decode(new_tokens, skip_special_tokens=True)[0].strip()
 
+    return predict_ocr
+
+
+def main() -> None:
+    predict_ocr = load_predictor()
     panels = list(csv.DictReader((PANELS / "candidates.csv").open(encoding="utf-8")))
     done = set()
     if OUT.exists():

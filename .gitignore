@@ -51,3 +51,6 @@ Thumbs.db
 # unsloth runtime cache
 unsloth_compiled_cache/
 *.tsbuildinfo
+
+# internal-only test data (never publish: repo, app, HF, video, deck)
+data/private/
