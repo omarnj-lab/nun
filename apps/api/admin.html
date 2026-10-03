@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nūn · add panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=IBM+Plex+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --teal:#1F5E57; --gold:#C9A04A; --ink:#13201F; --sage:#F1F5F3; --line:#DCE5E1; --ok:#1F6B4E; --warn:#A64B28; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; color: var(--ink); background: var(--sage); }
+  header { background: var(--teal); color: #fff; padding: 12px 16px; font-weight: 600; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  label { display: block; font-weight: 600; margin: 10px 0 4px; }
+  input { font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+  .row input[type=number] { width: 90px; }
+  button { font: inherit; border-radius: 8px; border: 1px solid var(--line); background: #fff; padding: 8px 14px; min-height: 40px; cursor: pointer; }
+  button.pri { background: var(--teal); color: #fff; border-color: var(--teal); }
+  button.warn { color: var(--warn); border-color: var(--warn); }
+  #stage { position: relative; display: inline-block; max-width: 100%; touch-action: none; user-select: none; }
+  #stage img { max-width: 100%; max-height: 70vh; display: block; }
+  #box { position: absolute; border: 3px solid var(--gold); background: rgba(201,160,74,.15); display: none; pointer-events: none; }
+  .q { font-family: "Amiri Quran", serif; font-size: 22px; line-height: 2; direction: rtl; }
+  .msg { padding: 8px; border-radius: 8px; margin-top: 8px; }
+  .ok { background: #e5f2ec; color: var(--ok); } .err { background: #fbe9e3; color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; } td, th { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; font-size: 14px; }
+  .hint { color: #4a5a58; font-size: 14px; }
+</style>
+</head>
+<body>
+<header>Nūn · add a panel to the collection</header>
+<main>
+  <section class="card">
+    <label>1 · Photo of the panel (straight on, whole panel, good light)</label>
+    <input type="file" id="file" accept="image/*">
+    <div class="hint">2 · Drag a box around the calligraphy text on the photo (the frame and ornaments outside it are ignored when checking a match).</div>
+    <div id="stage"><img id="img" alt=""><div id="box"></div></div>
+    <label>3 · Verse (confirmed by the team)</label>
+    <div class="row">
+      <div><div class="hint">Surah</div><input type="number" id="sura" min="1" max="114"></div>
+      <div><div class="hint">Ayah from</div><input type="number" id="a0" min="1"></div>
+      <div><div class="hint">Ayah to</div><input type="number" id="a1" min="1"></div>
+      <button id="preview">Show verse</button>
+    </div>
+    <div id="verse"></div>
+    <label>4 · Panel id (lowercase, e.g. masjid_door_1)</label>
+    <div class="row"><input id="pid" pattern="[a-z0-9][a-z0-9_-]+"><button class="pri" id="save">Confirm and add</button></div>
+    <div id="out"></div>
+  </section>
+  <section class="card">
+    <b>Collection</b> <span id="count"></span>
+    <table><thead><tr><th>id</th><th>verse</th><th>text box</th><th>source</th><th></th></tr></thead><tbody id="list"></tbody></table>
+  </section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let file = null, box = null, start = null;
+
+$("#file").onchange = e => {
+  file = e.target.files[0]; box = null; $("#box").style.display = "none";
+  if (file) $("#img").src = URL.createObjectURL(file);
+};
+const rel = e => { const r = $("#img").getBoundingClientRect(); const p = e.touches ? e.touches[0] : e;
+  return [Math.min(Math.max((p.clientX - r.left) / r.width, 0), 1), Math.min(Math.max((p.clientY - r.top) / r.height, 0), 1)]; };
+function draw(a, b) {
+  const x0 = Math.min(a[0], b[0]), y0 = Math.min(a[1], b[1]), x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]);
+  box = [x0, y0, x1, y1];
+  Object.assign($("#box").style, { display: "block", left: x0 * 100 + "%", top: y0 * 100 + "%", width: (x1 - x0) * 100 + "%", height: (y1 - y0) * 100 + "%" });
+}
+$("#stage").addEventListener("pointerdown", e => { if (!file) return; start = rel(e); $("#stage").setPointerCapture(e.pointerId); });
+$("#stage").addEventListener("pointermove", e => { if (start) draw(start, rel(e)); });
+$("#stage").addEventListener("pointerup", e => { if (start) draw(start, rel(e)); start = null; });
+
+$("#preview").onclick = async () => {
+  const s = $("#sura").value, a0 = $("#a0").value, a1 = $("#a1").value || a0;
+  const r = await fetch(`/api/verse/${s}/${a0}?to=${a1}`);
+  if (!r.ok) { $("#verse").innerHTML = `<div class="msg err">That verse does not exist.</div>`; return; }
+  const c = await r.json();
+  $("#verse").innerHTML = `<p><b>${esc(c.sura_name.en)} (${esc(c.sura_name.ar)}) ${esc(c.ref.label)}</b>: check that this is the text on the panel</p>`
+    + `<div class="q">${c.ayahs.map(a => esc(a.text_uthmani)).join(" ۝ ")}</div>`;
+};
+
+$("#save").onclick = async () => {
+  const out = $("#out");
+  if (!file) return out.innerHTML = `<div class="msg err">Choose a photo.</div>`;
+  if (!box || (box[2] - box[0]) * (box[3] - box[1]) < 0.01) return out.innerHTML = `<div class="msg err">Drag a box around the text.</div>`;
+  const fd = new FormData();
+  fd.append("image", file); fd.append("panel_id", $("#pid").value.trim());
+  fd.append("sura", $("#sura").value); fd.append("aya_from", $("#a0").value); fd.append("aya_to", $("#a1").value || $("#a0").value);
+  fd.append("box", box.map(v => v.toFixed(4)).join(","));
+  out.innerHTML = "Adding… (the matcher is rebuilt)";
+  const r = await fetch("/api/admin/panels", { method: "POST", body: fd });
+  const j = await r.json();
+  out.innerHTML = r.ok ? `<div class="msg ok">Added ${esc(j.panel.id)}.</div>` : `<div class="msg err">${esc(j.detail)}</div>`;
+  if (r.ok) load();
+};
+
+async function load() {
+  const r = await fetch("/api/admin/panels"); const j = await r.json();
+  $("#count").textContent = `(${j.panels.length} panels)`;
+  $("#list").innerHTML = j.panels.map(p => `<tr><td>${esc(p.id)}</td><td>${p.sura}:${p.aya_from}${p.aya_to !== p.aya_from ? "-" + p.aya_to : ""}</td>`
+    + `<td>${p.text_box ? p.text_box.map(v => v.toFixed(2)).join(", ") : "middle 60%"}</td><td>${esc(p.source)}</td>`
+    + `<td><button class="warn" data-id="${esc(p.id)}">Remove</button></td></tr>`).join("");
+  document.querySelectorAll("button[data-id]").forEach(b => b.onclick = async () => {
+    if (!confirm(`Remove ${b.dataset.id} from the collection?`)) return;
+    await fetch(`/api/admin/panels/${encodeURIComponent(b.dataset.id)}`, { method: "DELETE" }); load();
+  });
+}
+load();
+</script>
+</body>
+</html>

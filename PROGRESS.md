@@ -194,3 +194,18 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
 - Smoke (real models): demo panel photo → 20:114 card; unknown photo → uncertain; chat answers cite [D1–D3];
   riba-loan question → level D + referral (local had said "out of scope": fixed, tested). Claude ≈ 6 s,
   local ≈ 50 s per answer. 86 tests pass.
+
+## 2026-10-04 · Day 1 [BUILD] · web app, admin tool, live on HTTPS
+- Web app (React/Vite/TS, ar RTL default + en, brand tokens): camera/upload (downscaled to 1600 px in the browser)
+  → scanning → verse card (Uthmani text in Amiri Quran with ayah markers, surah/ayah/juz/Makki-Madani chips,
+  Saheeh International translation + version, EveryAyah recitation, sources) or "couldn't identify" with tips and
+  "ask a guide" → chat (AI disclosure banner, suggested questions, Local/Claude switch, "AI-generated" label,
+  expandable citations, referral card). Served by the API (single origin).
+- Admin `/admin` (HTTP Basic, user admin, ADMIN_PASSWORD in .env): photo + drag a text box + verse preview
+  from the corpus → add; list/remove; the matcher is rebuilt on change and uses the text box for coverage.
+- `scripts/ops/serve_public.sh`: Ollama (if needed) + uvicorn + Cloudflare quick tunnel (no account).
+- Public-link check (`scripts/ops/public_smoke.py`): the team's real phone photo of the Ayat al-Kursi panel →
+  2:255 card in 2.2 s (1,253 inliers, coverage 0.94); a photo not in the collection → "uncertain"; two questions
+  → cited answers from the local model (≈ 1.5 s each when warm).
+- Found: one answer cited [D3] for "known as Ayat al-Kursi", which D3 does not contain → Day 2: citation-
+  faithfulness check (each cited sentence must be supported by the cited document).
