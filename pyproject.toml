@@ -59,6 +59,9 @@ extend-exclude = ["training/reference", "eval/notebooks", "analysis"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.File", "fastapi.Form"]  # FastAPI's intended parameter style
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

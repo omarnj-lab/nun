@@ -43,6 +43,7 @@ class Entry:
     kps: np.ndarray  # (n, 2) keypoint coordinates
     desc: np.ndarray | None
     shape: tuple[int, int]
+    text_box: tuple[float, float, float, float] = (0.2, 0.2, 0.8, 0.8)  # x0, y0, x1, y1 as fractions of the photo
 
 
 @dataclass
@@ -92,22 +93,35 @@ class PanelMatcher:
         pts = np.array([k.pt for k in kps], dtype=np.float32).reshape(-1, 2)
         return pts, _root_sift(desc), g.shape
 
-    def add(self, id: str, img: Image.Image, group: str | None = None, emb: np.ndarray | None = None) -> None:
+    def add(
+        self,
+        id: str,
+        img: Image.Image,
+        group: str | None = None,
+        emb: np.ndarray | None = None,
+        text_box: tuple[float, float, float, float] | None = None,
+    ) -> None:
+        """text_box: where the text is on this collection photo (fractions x0, y0, x1, y1); the coverage check then
+        counts inliers inside it instead of the middle 60%."""
         pts, desc, shape = self.features(img)
         e = self.embed([img])[0] if emb is None else emb
-        self.entries.append(Entry(id, group or id, e, pts, desc, shape))
+        entry = Entry(id, group or id, e, pts, desc, shape)
+        if text_box:
+            entry.text_box = tuple(float(v) for v in text_box)
+        self.entries.append(entry)
 
-    def add_many(self, items: list[tuple[str, Image.Image, str | None]], batch: int = 32) -> None:
+    def add_many(self, items: list[tuple], batch: int = 32) -> None:
+        """items: (id, image, group) or (id, image, group, text_box)."""
         for i in range(0, len(items), batch):
             chunk = items[i : i + batch]
-            embs = self.embed([im for _, im, _ in chunk])
-            for (id_, im, grp), e in zip(chunk, embs, strict=True):
-                self.add(id_, im, grp, emb=e)
+            embs = self.embed([it[1] for it in chunk])
+            for it, e in zip(chunk, embs, strict=True):
+                self.add(it[0], it[1], it[2], emb=e, text_box=it[3] if len(it) > 3 else None)
 
     def _verify(self, q_pts, q_desc, e: Entry) -> tuple[int, float]:
-        """→ (RANSAC inliers, centre coverage). Centre coverage = share of the 4×4 cells covering the middle 60% of the
-        collection photo that hold ≥ 2 inliers. Panels that share a frame, border or tile pattern but carry different
-        text match only around the edge (low coverage); the same panel also matches across its text (high)."""
+        """→ (RANSAC inliers, text coverage). Coverage = share of the 4×4 cells over the text box (default: the middle
+        60%) of the collection photo that hold ≥ 2 inliers. Panels that share a frame, border or tile pattern but carry
+        different text match only around the edge (low coverage); the same panel also matches across its text (high)."""
         if q_desc is None or e.desc is None or len(q_desc) < 8 or len(e.desc) < 8:
             return 0, 0.0
         knn = self.matcher.knnMatch(q_desc, e.desc, k=2)
@@ -125,8 +139,9 @@ class PanelMatcher:
             return 0, 0.0
         pts = dst[mask.ravel().astype(bool)]
         h, w = e.shape
-        u = (pts[:, 0] / w - 0.2) / 0.6
-        v = (pts[:, 1] / h - 0.2) / 0.6
+        x0, y0, x1, y1 = e.text_box
+        u = (pts[:, 0] / w - x0) / max(x1 - x0, 1e-6)
+        v = (pts[:, 1] / h - y0) / max(y1 - y0, 1e-6)
         inside = (u >= 0) & (u < 1) & (v >= 0) & (v < 1)
         cells = np.zeros((4, 4), int)
         np.add.at(cells, ((v[inside] * 4).astype(int), (u[inside] * 4).astype(int)), 1)

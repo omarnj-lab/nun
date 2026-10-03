@@ -178,3 +178,19 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
 - Git audit: no FIC, DuwatBench, shop or real_test images tracked; analysis CSVs (private-dataset predictions)
   git-ignored; analysis code + Quran JSON committed (needed by the panel scripts).
 - M1 corpus rebuilt with all checks passing; M4 skeleton tests + build pass; PRIOR_WORK.md updated for PLAN_NOW.
+
+## 2026-10-04 · Day 1 [BUILD] · backend: collection, scan, verse card, chat v0
+- Product collection `data/collection/` (git-ignored): 19 panels = 18 demo artworks + real_ayat_alkursi
+  (`can_show_publicly = yes`); references validated against the corpus. Commons/FIC/DuwatBench/testing-only stay out.
+- Matcher: per-panel text box (coverage counted inside it; default middle 60%).
+- `/api/scan` (photo in memory only → matcher → card, or "uncertain": never a verse without a match),
+  `/api/verse` (corpus-only card: Uthmani text, surah name/number, juz, Makki/Madani, Saheeh International,
+  EveryAyah recitation, sources), `/api/chat`, `/admin` + admin API (HTTP Basic), web app served same-origin,
+  per-IP rate limits, matcher warm-up at start.
+- Chat v0 (`nun/chat/`): local `qwen3.6` via Ollama in WSL (shares the Windows model files; port 11435) by
+  default, Claude `claude-opus-5` selectable. Documents D1 Arabic, D2 approved translation, D3 surah facts;
+  router A–D (+ keyword safety net for personal rulings → always referral); guards: Quran-quote replacement,
+  hadith removal, citation retry → safe fallback. No tafsir yet (none approved).
+- Smoke (real models): demo panel photo → 20:114 card; unknown photo → uncertain; chat answers cite [D1–D3];
+  riba-loan question → level D + referral (local had said "out of scope": fixed, tested). Claude ≈ 6 s,
+  local ≈ 50 s per answer. 86 tests pass.

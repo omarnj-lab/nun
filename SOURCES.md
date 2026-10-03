@@ -80,6 +80,8 @@ Useful Commons categories (verified to exist): `Islamic calligraphy` (500+ files
 | `Omartificial-Intelligence-Space/Arabic-labse-Matryoshka` | Cross-lingual search (related verses from non-Arabic questions) | HF | ✅ team-owned |
 | `NAMAA-Space/NAMAA-Saudi-TTS` | Optional Arabic TTS for **non-Quranic** UI text | HF (MIT) | ✅ team-owned |
 | `facebook/dinov2-small` | Global image embedding for panel photo matching (shortlist before SIFT + RANSAC verification) | HF (Apache-2.0) | ✅ |
+| `qwen3.6` (Ollama, 36B MoE, Q4_K_M) | Local chat model: default provider for the verse chat (Anthropic `claude-opus-5` selectable) | Ollama library (Apache-2.0) | ✅ |
+| `gpt-oss:20b` (Ollama, MXFP4) | Alternative local chat model | Ollama library (Apache-2.0) | ✅ |
 | Claude `claude-opus-5` (Anthropic API) | Chat agent + router; zero-shot vision baseline | api.anthropic.com | ✅ needs `ANTHROPIC_API_KEY` |
 
 ## 7. Challenge documents (reference only, not redistributed)
