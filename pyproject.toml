@@ -54,7 +54,7 @@ include = ["nun*"]
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-extend-exclude = ["training/reference", "eval/notebooks"]
+extend-exclude = ["training/reference", "eval/notebooks", "analysis"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

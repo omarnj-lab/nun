@@ -169,3 +169,12 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
   text pages); the centre-coverage check fixed it. Details: `eval/results/2026-10-02/photo_matching/FINDINGS.md`.
 - Still needed: the team's own repeat photos (`data/match_test/real_queries/<collection-stem>__*.jpg`) to replace
   the simulated ones.
+
+## 2026-10-03 · Team panels + real photos; pre-challenge snapshot
+- `real_test.zip` → `data/real_test/` (git-ignored; the zip moved there too). 21 team panels added to the
+  collection; all 21 references valid in the corpus.
+- Real phone photos: 5/5 correct (Ayat al-Kursi ×2 right, 93:5 right but narrowly: 40 inliers / 0.44 coverage,
+  3:170 right, unknown 48:1 rejected). Simulated with 171 panels: 100 / 98.2 / 94.2%, 0 wrong; team panels 21/21.
+- Git audit: no FIC, DuwatBench, shop or real_test images tracked; analysis CSVs (private-dataset predictions)
+  git-ignored; analysis code + Quran JSON committed (needed by the panel scripts).
+- M1 corpus rebuilt with all checks passing; M4 skeleton tests + build pass; PRIOR_WORK.md updated for PLAN_NOW.

@@ -38,3 +38,21 @@ text area) removed all of them while keeping 92–100% of correct matches.
 **Limits:** simulated photos; a single collection photo per panel; collection of 150. Before Oct 4: replace the
 simulated queries with the team's own repeat photos (2–3 phone photos per panel on another day, other distance and
 angle) and re-run; if real photos fall below these numbers, add a second collection photo per panel.
+
+## Update 2026-10-03 · the team's panels and first real phone photos
+Collection 171 = 150 Commons + 21 team panels (18 demo artworks with team-checked text, 3 real wall panels;
+`data/real_test/`, git-ignored). Same thresholds (≥ 20 inliers, ≥ 40% centre coverage).
+
+| Real phone photo | Result | Inliers | Centre coverage |
+|---|---|---|---|
+| Ayat al-Kursi wall panel, photo 1 | right panel | 1,272 | 0.94 |
+| Ayat al-Kursi wall panel, photo 2 | right panel | 2,180 | 1.00 |
+| testing-only panel (93:5) | right panel | **40** | **0.44**: only just above the 0.40 threshold |
+| testing-only panel (3:170) | right panel | 103 | 0.69 |
+| panel NOT in the collection (48:1) | rejected (correct) | 5 | 0.06 |
+
+**5/5 correct** (4 right, 1 correctly rejected). Simulated photos with 171 panels: 100% / 98.2% / 94.2%
+(easy/medium/hard), 0 wrong; the 21 team panels 21/21 at every level. Unknown panels accepted: the same 3 as before,
+all the same physical panel (checked). p50 0.50 s.
+Watch: the 93:5 photo passed by a small margin. More real photos per panel (other distances, light) will show
+whether 0.40 is too tight; a second collection photo of each team panel is the cheap fix.

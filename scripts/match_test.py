@@ -29,13 +29,15 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fic.read_score import flatten  # noqa: E402  (white background for transparent PNGs)
 
-from nun.match.matcher import PanelMatcher  # noqa: E402
+from nun.match.matcher import MIN_COVERAGE_DEFAULT, MIN_INLIERS_DEFAULT, PanelMatcher  # noqa: E402
 
 Image.MAX_IMAGE_PIXELS = None
 PANELS = Path("data/panels")
-OUT = Path("eval/results") / date.today().isoformat() / "photo_matching"
+OUT = Path("eval/results") / date.today().isoformat() / "photo_matching"  # numbers only; no image names withheld below
 EXAMPLES = Path("data/match_test/examples")
-REAL_QUERIES = Path("data/match_test/real_queries")
+TEAM_DIR = Path("data/real_test")  # the team's panels + real phone photos (git-ignored)
+TEAM_PANELS = TEAM_DIR / "panels.csv"
+TEAM_QUERIES = TEAM_DIR / "real_test.csv"
 SEED = 20261003
 SAME_PANEL_INLIERS = 60  # collection photos verifying this strongly against each other show the same panel
 LEVELS = {
@@ -112,10 +114,16 @@ def augment(img: Image.Image, level: str, rng: random.Random) -> Image.Image:
 
 def main() -> None:
     rng = random.Random(SEED)
-    gallery = [r["file"] for r in csv.DictReader((PANELS / "candidates.csv").open(encoding="utf-8"))]
+    paths = {r["file"]: PANELS / "raw" / r["file"] for r in csv.DictReader((PANELS / "candidates.csv").open())}
+    team = {}  # the team's panels (data/real_test): id "rt:<panel>"
+    if TEAM_PANELS.exists():
+        for r in csv.DictReader(TEAM_PANELS.open(encoding="utf-8")):
+            paths[f"rt:{r['panel']}"] = TEAM_DIR / "collection" / r["file"]
+            team[f"rt:{r['panel']}"] = r
+    gallery = list(paths)
     t0 = time.perf_counter()
     m = PanelMatcher(min_inliers=0)  # threshold is chosen below from the negatives
-    gal_imgs = {f: load(PANELS / "raw" / f) for f in gallery}
+    gal_imgs = {f: load(paths[f]) for f in gallery}
     m.add_many([(f, im, None) for f, im in gal_imgs.items()])
     build_s = time.perf_counter() - t0
     gal_hash = {f: imagehash.phash(im) for f, im in gal_imgs.items()}
@@ -144,11 +152,12 @@ def main() -> None:
             queries.append((f, level, q))
             if i < 4:
                 q.save(EXAMPLES / f"{Path(f).stem[:10]}_{level}.jpg", quality=85)
-    stems = {Path(f).stem: f for f in gallery}
-    if REAL_QUERIES.exists():
-        for p in sorted(REAL_QUERIES.glob("*.*")):
-            if p.stem.split("__")[0] in stems:
-                queries.append((stems[p.stem.split("__")[0]], "real", load(p)))
+    # the team's real phone photos: expected panel, or "unknown" (must be rejected)
+    real_rows = list(csv.DictReader(TEAM_QUERIES.open(encoding="utf-8"))) if TEAM_QUERIES.exists() else []
+    real_imgs = {r["query"]: load(TEAM_DIR / "queries" / r["query"]) for r in real_rows}
+    for r in real_rows:
+        if r["expected_panel"] != "unknown":
+            queries.append((f"rt:{r['expected_panel']}", "real", real_imgs[r["query"]]))
 
     negatives, dropped = [], 0  # (source, path, image)
     neg_paths = [("commons", p) for p in sorted(Path("data/real/commons/images").glob("*.*"))]
@@ -163,6 +172,9 @@ def main() -> None:
             dropped += 1  # the same image is in the collection: not a negative
             continue
         negatives.append((src, p, im))
+    for r in real_rows:  # the team's photos of panels NOT in the collection must be rejected too
+        if r["expected_panel"] == "unknown":
+            negatives.append(("real_unknown", TEAM_DIR / "queries" / r["query"], real_imgs[r["query"]]))
 
     def run(img: Image.Image) -> tuple[object, float]:
         t = time.perf_counter()
@@ -241,6 +253,38 @@ def main() -> None:
         "latency_s": {"p50": round(lat[len(lat) // 2], 3), "p95": round(lat[int(len(lat) * 0.95)], 3)},
         "index_build_s": round(build_s, 1),
     }
+    # each real phone photo, at the matcher's current thresholds
+    real_report = []
+    for r in real_rows:
+        res = m.match(real_imgs[r["query"]])
+        accepted = res.inliers >= MIN_INLIERS_DEFAULT and res.coverage >= MIN_COVERAGE_DEFAULT
+        exp = None if r["expected_panel"] == "unknown" else f"rt:{r['expected_panel']}"
+        if not accepted:
+            verdict = "rejected (correct)" if exp is None else "rejected (missed)"
+        else:
+            verdict = "right" if exp is not None and group[res.id] == group[exp] else "WRONG"
+        real_report.append(
+            {
+                "query": r["query"],
+                "expected": r["expected_panel"],
+                "matched": res.id.removeprefix("rt:"),
+                "inliers": res.inliers,
+                "coverage": round(res.coverage, 2),
+                "verdict": verdict,
+                "public": r["can_show_publicly"] == "yes",
+            }
+        )
+    summary["real_photos"] = [
+        x if x["public"] else {**x, "query": "testing-only photo", "expected": "(withheld)", "matched": "(withheld)"}
+        for x in real_report
+    ]
+    private = ["| query | expected | matched | inliers | centre coverage | verdict |", "|---|---|---|---|---|---|"]
+    private += [
+        f"| {x['query']} | {x['expected']} | {x['matched']} | {x['inliers']} | {x['coverage']} | {x['verdict']} |"
+        for x in real_report
+    ]
+    (TEAM_DIR / "real_results.md").write_text("\n".join(private) + "\n", encoding="utf-8")  # git-ignored: full names
+    print("\n".join(private))
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "results.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     cols = (

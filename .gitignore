@@ -54,3 +54,6 @@ unsloth_compiled_cache/
 
 # internal-only test data (never publish: repo, app, HF, video, deck)
 data/private/
+
+# predictions on the private Quranic-calligraphy dataset (analysis CSVs): never commit
+analysis/**/*.csv
