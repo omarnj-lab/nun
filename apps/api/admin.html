@@ -80,7 +80,7 @@ $("#preview").onclick = async () => {
   if (!r.ok) { $("#verse").innerHTML = `<div class="msg err">That verse does not exist.</div>`; return; }
   const c = await r.json();
   $("#verse").innerHTML = `<p><b>${esc(c.sura_name.en)} (${esc(c.sura_name.ar)}) ${esc(c.ref.label)}</b>: check that this is the text on the panel</p>`
-    + `<div class="q">${c.ayahs.map(a => esc(a.text_uthmani)).join(" ۝ ")}</div>`;
+    + `<div class="q">${c.ayahs.map(a => esc(a.text_display)).join(" ۝ ")}</div>`;
 };
 
 $("#save").onclick = async () => {

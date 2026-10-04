@@ -1,5 +1,5 @@
 {
-  "built_at": "2026-10-03T18:01:56+00:00",
+  "built_at": "2026-10-04T09:01:39+00:00",
   "sources": {
     "tanzil:simple-clean": {
       "url": "https://tanzil.net/pub/download/index.php?quranType=simple-clean&outType=txt-2&agree=true",
@@ -96,7 +96,7 @@
   "outputs": {
     "quran.jsonl": {
       "records": 6236,
-      "sha256": "26629f5c60b60975d71a3b620551221bad5d16c4eaf233bcc0407787ee3c9f16"
+      "sha256": "6987761bc2dbfae8e64b16719ffb087302d842f2df33ad1efd0fd0aa4a87925f"
     }
   }
 }

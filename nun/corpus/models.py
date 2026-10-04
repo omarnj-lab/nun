@@ -19,7 +19,8 @@ class QuranRecord(BaseModel):
     type: Literal["quran"] = "quran"
     sura: int
     aya: int
-    text_uthmani: str  # verbatim QuranEnc arabic_text; DISPLAY ONLY
+    text_uthmani: str  # verbatim QuranEnc arabic_text (KFGQPC encoding; needs the KFGQPC font to render)
+    text_uthmani_tanzil: str = ""  # verbatim Tanzil Uthmani (Unicode-standard marks; renders in Amiri Quran); DISPLAY
     text_simple: str  # Tanzil simple-clean; MATCHING ONLY
     text_norm: str
     text_norm_ns: str

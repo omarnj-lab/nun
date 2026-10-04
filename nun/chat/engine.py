@@ -96,7 +96,7 @@ def documents(sura: int, aya_from: int, aya_to: int) -> list[Doc]:
         Doc(
             "D1",
             f"Quran {name}: Arabic text",
-            " ".join(a["text_uthmani"] for a in card["ayahs"]),
+            " ".join(a["text_display"] for a in card["ayahs"]),
             "QuranEnc.com (Uthmani, Hafs)",
             "https://quranenc.com",
         ),

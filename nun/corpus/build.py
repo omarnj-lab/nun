@@ -166,6 +166,7 @@ def build(data: Path, offline: bool = False) -> dict:
     # 1 and 9. It is not part of that ayah (QuranEnc omits it), so it is separated from text_simple here; the verse
     # text itself is unchanged. 1:1 and 27:30 keep their Basmala (it is the verse).
     basmala_simple = tanzil["simple-clean"][(1, 1)]
+    basmala_uthmani = tanzil["uthmani"][(1, 1)]
     headers_removed = []
 
     records = []
@@ -174,12 +175,19 @@ def build(data: Path, offline: bool = False) -> dict:
         row = qe[primary][(s, a)]
         uthmani = row["arabic_text"]
         simple = tanzil["simple-clean"][(s, a)]
+        uthmani_tanzil = tanzil["uthmani"][(s, a)]
         if a == 1 and s not in (1, 9):
             if not simple.startswith(basmala_simple + " "):
                 failures.append(f"{s}:1 simple-clean lacks the expected Basmala header")
             else:
                 simple = simple[len(basmala_simple) + 1 :]
                 headers_removed.append(s)
+            # the header is the first four words; 95:1 and 97:1 write it with a shadda on the ba (بِّسْمِ)
+            words = uthmani_tanzil.split(" ")
+            if normalize_ns(" ".join(words[:4])) != normalize_ns(basmala_uthmani):
+                failures.append(f"{s}:1 Tanzil uthmani lacks the expected Basmala header")
+            else:
+                uthmani_tanzil = " ".join(words[4:])
         if not uthmani.strip() or not simple.strip():
             empty.append(f"{s}:{a}")
         translations = {}
@@ -208,6 +216,7 @@ def build(data: Path, offline: bool = False) -> dict:
                 sura=s,
                 aya=a,
                 text_uthmani=uthmani,
+                text_uthmani_tanzil=uthmani_tanzil,
                 text_simple=simple,
                 text_norm=normalize(simple),
                 text_norm_ns=normalize_ns(simple),

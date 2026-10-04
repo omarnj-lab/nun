@@ -55,6 +55,7 @@ class Match:
     accepted: bool
     coverage: float = 0.0  # share of the panel's central cells holding inliers (see _verify)
     candidates: list[tuple[str, int, float, float]] = field(default_factory=list)  # (id, inliers, cosine, coverage)
+    polygon: list[list[float]] | None = None  # the matched panel's corners in the visitor's photo (fractions x, y)
 
 
 class PanelMatcher:
@@ -119,24 +120,28 @@ class PanelMatcher:
                 self.add(it[0], it[1], it[2], emb=e, text_box=it[3] if len(it) > 3 else None)
 
     def _verify(self, q_pts, q_desc, e: Entry) -> tuple[int, float]:
+        inl, cov, _ = self._verify_h(q_pts, q_desc, e)
+        return inl, cov
+
+    def _verify_h(self, q_pts, q_desc, e: Entry) -> tuple[int, float, np.ndarray | None]:
         """→ (RANSAC inliers, text coverage). Coverage = share of the 4×4 cells over the text box (default: the middle
         60%) of the collection photo that hold ≥ 2 inliers. Panels that share a frame, border or tile pattern but carry
         different text match only around the edge (low coverage); the same panel also matches across its text (high)."""
         if q_desc is None or e.desc is None or len(q_desc) < 8 or len(e.desc) < 8:
-            return 0, 0.0
+            return 0, 0.0, None
         knn = self.matcher.knnMatch(q_desc, e.desc, k=2)
         good = [m for m, n in (p for p in knn if len(p) == 2) if m.distance < 0.75 * n.distance]
         if len(good) < 8:
-            return 0, 0.0
+            return 0, 0.0, None
         src = q_pts[[m.queryIdx for m in good]]
         dst = e.kps[[m.trainIdx for m in good]]
         H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 6.0)
         if H is None or mask is None:
-            return 0, 0.0
+            return 0, 0.0, None
         # reject degenerate homographies (collapsed or mirrored projections are not a photo of a flat panel)
         det = np.linalg.det(H[:2, :2])
         if not (0.02 < abs(det) < 50) or det < 0:
-            return 0, 0.0
+            return 0, 0.0, None
         pts = dst[mask.ravel().astype(bool)]
         h, w = e.shape
         x0, y0, x1, y1 = e.text_box
@@ -145,7 +150,22 @@ class PanelMatcher:
         inside = (u >= 0) & (u < 1) & (v >= 0) & (v < 1)
         cells = np.zeros((4, 4), int)
         np.add.at(cells, ((v[inside] * 4).astype(int), (u[inside] * 4).astype(int)), 1)
-        return int(mask.sum()), float((cells >= 2).mean())
+        return int(mask.sum()), float((cells >= 2).mean()), H
+
+    @staticmethod
+    def _outline(H, e: Entry, q_shape) -> list[list[float]] | None:
+        """Project the collection photo's corners into the visitor's photo: the panel's boundary for the UI."""
+        if H is None:
+            return None
+        try:
+            Hi = np.linalg.inv(H)
+        except np.linalg.LinAlgError:
+            return None
+        h, w = e.shape
+        corners = np.float32([[0, 0], [w, 0], [w, h], [0, h]]).reshape(-1, 1, 2)
+        q = cv2.perspectiveTransform(corners, Hi).reshape(-1, 2)
+        qh, qw = q_shape
+        return [[round(float(x / qw), 4), round(float(y / qh), 4)] for x, y in q]
 
     def match(self, img: Image.Image, emb: np.ndarray | None = None) -> Match:
         if not self.entries:
@@ -153,14 +173,16 @@ class PanelMatcher:
         q = self.embed([img])[0] if emb is None else emb
         sims = np.stack([e.emb for e in self.entries]) @ q
         order = np.argsort(-sims)[: self.shortlist]
-        q_pts, q_desc, _ = self.features(img)
-        cands = []
+        q_pts, q_desc, q_shape = self.features(img)
+        cands, homs = [], {}
         for i in order:
-            inl, cov = self._verify(q_pts, q_desc, self.entries[i])
+            inl, cov, H = self._verify_h(q_pts, q_desc, self.entries[i])
             cands.append((self.entries[i], inl, float(sims[i]), cov))
+            homs[self.entries[i].id] = H
         cands.sort(key=lambda c: (c[1] * (0.25 + c[3]), c[2]), reverse=True)  # favour agreement across the text
         best, inl, cos, cov = cands[0]
         return Match(
+            polygon=self._outline(homs.get(best.id), best, q_shape),
             id=best.id,
             group=best.group,
             inliers=inl,

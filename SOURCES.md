@@ -23,6 +23,8 @@ Chosen translation keys (all on QuranEnc; versions as of 2026-09-27; record the 
 | zh | `chinese_makin` | 1.0.2 | Muhammad Makin (Ma Jian) | 🟡 confirm |
 | ar tafsir | `arabic_moyassar` | record | التفسير الميسر (King Fahd Complex) | 🔴 see note below |
 
+**Display text (2026-10-04):** the app shows Tanzil's Uthmani text (`text_uthmani_tanzil`, verbatim, sura-header Basmala separated). QuranEnc's `arabic_text` uses the KFGQPC encoding (e.g. U+065E for the staggered tanween), which only the KFGQPC font renders; Amiri Quran shows empty boxes. The build checks both texts agree on every ayah after normalisation.
+
 **Build notes (M1, 2026-09-27):** Tanzil's simple-clean and uthmani files write the sura-header Basmala at the start of aya 1 of every sura except 1 and 9; the corpus separates it (verse text unchanged, recorded in `data/corpus/MANIFEST.json`). `arabic_moyassar` is served by the QuranEnc API but is not in its published translations list, so it has no version number to cite.
 
 **Tafsir note (decide before Oct 4):** the package approves "sources from the first three centuries or dorar.net/tafseer". Tafsir al-Muyassar is a modern King Fahd Complex work: complete, clean and API-accessible, but not named in the package. Options: (a) ask the organisers (Discord / info@islamicaich.org) whether it's acceptable; (b) use Dorar's «موسوعة التفسير» (dorar.net/tafseer, reachable from the server with a normal user-agent; reuse terms 🔴 unknown) for the curated inscription verses; (c) both, with Dorar shown first where available. Whatever is chosen, the UI names the tafsir and distinguishes its words from the Quranic text.

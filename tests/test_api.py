@@ -27,6 +27,7 @@ def test_verse_card_from_corpus(client) -> None:
     card = client.get("/api/verse/20/114").json()
     assert card["ref"]["label"] == "20:114" and card["sura_name"]["ar"] == "طه"
     assert card["ayahs"][0]["text_uthmani"] == main.store.get(20, 114).text_uthmani  # verbatim corpus text
+    assert card["ayahs"][0]["text_display"] == main.store.get(20, 114).text_uthmani_tanzil  # verbatim Tanzil
     assert card["ayahs"][0]["audio"].endswith("020114.mp3") and card["translation"]["translator"]
     assert client.get("/api/verse/1/8").status_code == 404
 

@@ -150,7 +150,12 @@ async def scan(request: Request, image: UploadFile = File(...), lang: str = Form
     card = build_card(store, panel["sura"], panel["aya_from"], panel["aya_to"], "en" if lang != "ar" else "ar")
     return {
         "status": "matched",
-        "panel": {"id": panel["id"], "inliers": res.inliers, "coverage": round(res.coverage, 2)},
+        "panel": {
+            "id": panel["id"],
+            "inliers": res.inliers,
+            "coverage": round(res.coverage, 2),
+            "polygon": res.polygon,  # the panel boundary in the visitor's photo (fractions)
+        },
         "card": card,
         "timings_ms": {"match": elapsed},
     }

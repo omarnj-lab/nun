@@ -1,14 +1,14 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { ask, scan, shrink, type Card, type ChatReply, type Turn } from "./api";
+import { ask, scan, shrink, type Card, type ChatReply, type Citation, type Turn } from "./api";
 import { I18nContext, arabicDigits, dirOf, useT, type Lang } from "./i18n";
 
+type Matched = { photo: string; card: Card; polygon: number[][] | null };
 type View =
   | { name: "home" }
   | { name: "scanning"; photo: string }
-  | { name: "card"; photo: string; card: Card }
+  | ({ name: "result"; chat: boolean } & Matched)
   | { name: "uncertain"; photo: string }
-  | { name: "error"; message: string }
-  | { name: "chat"; photo: string; card: Card };
+  | { name: "error"; message: string };
 
 function initialLang(): Lang {
   try {
@@ -19,6 +19,8 @@ function initialLang(): Lang {
   }
   return "ar";
 }
+
+const useLang = () => useContext(I18nContext);
 
 export default function App() {
   const [lang, setLang] = useState<Lang>(initialLang);
@@ -41,81 +43,81 @@ export default function App() {
 function Shell() {
   const t = useT();
   const [view, setView] = useState<View>({ name: "home" });
+  const home = () => setView({ name: "home" });
   return (
-    <>
-      <Header onHome={() => setView({ name: "home" })} />
-      <main className="container">
-        {view.name === "home" && <Home onScanned={setView} />}
+    <div className={`app ${view.name === "result" ? "wide" : ""}`}>
+      <Header onHome={home} />
+      <main className="main">
+        {view.name === "home" && <Home onView={setView} />}
         {view.name === "scanning" && <Scanning photo={view.photo} />}
-        {view.name === "card" && (
-          <CardView photo={view.photo} card={view.card} onAsk={() => setView({ ...view, name: "chat" })}
-            onAgain={() => setView({ name: "home" })} />
+        {view.name === "result" && (
+          <Workspace view={view} setChat={(chat) => setView({ ...view, chat })} onAgain={home} />
         )}
-        {view.name === "uncertain" && <Uncertain photo={view.photo} onAgain={() => setView({ name: "home" })} />}
+        {view.name === "uncertain" && <Uncertain photo={view.photo} onAgain={home} />}
         {view.name === "error" && (
-          <section className="panel">
+          <section className="sheet narrow">
             <h2>{t("error.title")}</h2>
             <p>{view.message}</p>
-            <button className="btn primary" onClick={() => setView({ name: "home" })}>{t("scan.again")}</button>
+            <button className="btn primary" onClick={home}>{t("scan.again")}</button>
           </section>
         )}
-        {view.name === "chat" && <Chat card={view.card} onBack={() => setView({ ...view, name: "card" })} />}
       </main>
-      <footer className="container footer">{t("footer.ai")}</footer>
-    </>
+      <footer className="footer">{t("footer.ai")}</footer>
+    </div>
   );
 }
 
 function Header({ onHome }: { onHome: () => void }) {
   const t = useT();
+  const { lang, setLang } = useLang();
   return (
     <header className="header">
-      <div className="container header-row">
-        <button className="logo-btn" onClick={onHome} aria-label={t("app.name")}>
-          <img src="/logo.svg" alt={t("app.name")} className="logo" />
-        </button>
-        <I18nContext.Consumer>
-          {({ lang, setLang }) => (
-            <button className="btn ghost" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>{t("lang.switch")}</button>
-          )}
-        </I18nContext.Consumer>
-      </div>
+      <button className="logo-btn" onClick={onHome} aria-label={t("app.name")}>
+        <img src="/logo.svg" alt={t("app.name")} className="logo" />
+      </button>
+      <button className="btn ghost" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>{t("lang.switch")}</button>
     </header>
   );
 }
 
-function Home({ onScanned }: { onScanned: (v: View) => void }) {
+function Home({ onView }: { onView: (v: View) => void }) {
   const t = useT();
-  const { lang } = useContextLang();
+  const { lang } = useLang();
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    const photo = URL.createObjectURL(file); // stays in the browser
-    onScanned({ name: "scanning", photo });
+    const photo = URL.createObjectURL(file); // stays in the browser; only a downscaled copy is sent
+    onView({ name: "scanning", photo });
     try {
       const r = await scan(await shrink(file), lang);
-      onScanned(r.status === "matched" ? { name: "card", photo, card: r.card } : { name: "uncertain", photo });
+      onView(
+        r.status === "matched"
+          ? { name: "result", chat: false, photo, card: r.card, polygon: r.panel.polygon ?? null }
+          : { name: "uncertain", photo },
+      );
     } catch (err) {
-      onScanned({ name: "error", message: (err as Error).message });
+      onView({ name: "error", message: (err as Error).message });
     }
   };
   return (
     <section className="home">
-      <h1 className="title">{t("app.name")}</h1>
-      <p className="tagline">{t("app.tagline")}</p>
-      <div className="actions">
-        <label className="btn primary big">
-          {t("home.capture")}
-          <input type="file" accept="image/*" capture="environment" hidden onChange={onPick} />
-        </label>
-        <label className="btn">
-          {t("home.upload")}
-          <input type="file" accept="image/*" hidden onChange={onPick} />
-        </label>
+      <h1 className="hero">{t("home.title")}</h1>
+      <div className="viewfinder">
+        <img src="/sample.jpg" alt="" />
+        <span className="corner tl" /><span className="corner tr" /><span className="corner bl" /><span className="corner br" />
       </div>
+      <label className="shutter" aria-label={t("home.capture")}>
+        <span className="shutter-ring"><span className="shutter-dot" /></span>
+        <span>{t("home.shutter")}</span>
+        <input type="file" accept="image/*" capture="environment" hidden onChange={onPick} />
+      </label>
+      <label className="btn soft">
+        {t("home.upload")}
+        <input type="file" accept="image/*" hidden onChange={onPick} />
+      </label>
       <p className="hint">{t("home.hint")}</p>
-      <p className="privacy">{t("home.privacy")}</p>
+      <p className="hint">{t("home.privacy")}</p>
     </section>
   );
 }
@@ -123,12 +125,14 @@ function Home({ onScanned }: { onScanned: (v: View) => void }) {
 function Scanning({ photo }: { photo: string }) {
   const t = useT();
   return (
-    <section className="panel center">
-      <div className="scan-frame">
+    <section className="home">
+      <div className="viewfinder live">
+        <span className="pill">{t("scan.pill")}</span>
         <img src={photo} alt="" />
+        <span className="corner tl" /><span className="corner tr" /><span className="corner bl" /><span className="corner br" />
         <div className="scan-line" />
       </div>
-      <p className="muted">{t("scan.working")}</p>
+      <p className="hint">{t("scan.working")}</p>
     </section>
   );
 }
@@ -136,96 +140,179 @@ function Scanning({ photo }: { photo: string }) {
 function Uncertain({ photo, onAgain }: { photo: string; onAgain: () => void }) {
   const t = useT();
   return (
-    <section className="panel">
-      <img src={photo} alt="" className="thumb" />
-      <h2 className="warn-title">{t("uncertain.title")}</h2>
-      <p>{t("uncertain.body")}</p>
-      <p className="muted">{t("uncertain.tips")}</p>
-      <p className="muted">{t("uncertain.guide")}</p>
+    <section className="sheet narrow">
+      <img src={photo} alt="" className="photo" />
+      <div className="notice warn">
+        <span className="badge warn">{t("uncertain.badge")}</span>
+        <h2>{t("uncertain.title")}</h2>
+        <p>{t("uncertain.body")}</p>
+        <p className="muted">{t("uncertain.tips")}</p>
+        <p className="muted">{t("uncertain.guide")}</p>
+      </div>
       <button className="btn primary" onClick={onAgain}>{t("scan.again")}</button>
     </section>
   );
 }
 
-function Chips({ card }: { card: Card }) {
-  const t = useT();
-  const { lang } = useContextLang();
-  const num = (n: number) => (lang === "ar" ? arabicDigits(n) : String(n));
-  const ayahs = card.ref.aya_to !== card.ref.aya_from ? `${num(card.ref.aya_from)}–${num(card.ref.aya_to)}` : num(card.ref.aya_from);
-  return (
-    <div className="chips">
-      <span className="chip">{t("card.surah")} {lang === "ar" ? card.sura_name.ar : card.sura_name.en} · {num(card.ref.sura)}</span>
-      <span className="chip">{t("card.ayah")} {ayahs}</span>
-      <span className="chip">{t("card.juz")} {num(card.juz)}</span>
-      <span className="chip">{card.revelation === "meccan" ? t("card.meccan") : t("card.medinan")}</span>
-    </div>
+const WIDE = "(min-width: 960px)";
+
+/** Desktop: verse info and chat side by side (info on the reading-start side). Phone: info, then chat. */
+function Workspace({ view, setChat, onAgain }: {
+  view: Matched & { chat: boolean };
+  setChat: (c: boolean) => void;
+  onAgain: () => void;
+}) {
+  const [wide, setWide] = useState(() => window.matchMedia(WIDE).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(WIDE);
+    const on = () => setWide(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  if (wide) {
+    return (
+      <div className="workspace">
+        <Info view={view} onAsk={null} onAgain={onAgain} />
+        <Chat view={view} onBack={null} />
+      </div>
+    );
+  }
+  return view.chat ? (
+    <Chat view={view} onBack={() => setChat(false)} />
+  ) : (
+    <Info view={view} onAsk={() => setChat(true)} onAgain={onAgain} />
   );
 }
 
-function useContextLang() {
-  return useContext(I18nContext);
+/** The visitor's photo with the matched panel's boundary (projected by the matcher's homography) drawn in gold. */
+function PhotoWithOutline({ photo, polygon }: { photo: string; polygon: number[][] | null }) {
+  return (
+    <figure className="photo-box">
+      <div className="photo-frame">
+        <img src={photo} alt="" />
+        {polygon && (
+          <svg viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+            <polygon points={polygon.map((p) => p.join(",")).join(" ")} vectorEffect="non-scaling-stroke" />
+          </svg>
+        )}
+      </div>
+    </figure>
+  );
 }
 
-function CardView({ photo, card, onAsk, onAgain }: { photo: string; card: Card; onAsk: () => void; onAgain: () => void }) {
+function Info({ view, onAsk, onAgain }: { view: Matched; onAsk: (() => void) | null; onAgain: () => void }) {
   const t = useT();
+  const { lang } = useLang();
+  const { card } = view;
+  const num = (n: number) => (lang === "ar" ? arabicDigits(n) : String(n));
+  const ref = card.ref;
+  const ayahs = ref.aya_to !== ref.aya_from ? `${num(ref.aya_from)}–${num(ref.aya_to)}` : num(ref.aya_from);
   return (
-    <section className="panel">
-      <div className="card-head">
-        <img src={photo} alt="" className="thumb small" />
-        <span className="ok-chip">✓ {t("card.matched")}</span>
+    <section className="sheet info">
+      <PhotoWithOutline photo={view.photo} polygon={view.polygon} />
+      <p className="caption">{t("card.flow")}</p>
+      <div className="chips">
+        <span className="chip ok">✓ {t("card.verified")}</span>
+        <span className="chip">{t("card.quranic")}</span>
       </div>
-      <Chips card={card} />
       <div className="quran" dir="rtl" lang="ar">
         {card.ayahs.map((a) => (
           <span key={a.aya}>
-            {a.text_uthmani} <span className="aya-no">﴿{arabicDigits(a.aya)}﴾</span>{" "}
+            {a.text_display} <span className="aya-no">﴿{arabicDigits(a.aya)}﴾</span>{" "}
           </span>
         ))}
       </div>
       {card.translation && (
-        <div className="translation" dir="ltr" lang="en">
-          <h3>{t("card.translation")}</h3>
+        <blockquote className="translation" dir="ltr" lang="en">
           {card.ayahs.map((a) => (
-            <p key={a.aya}>({a.aya}) {a.translation}</p>
+            <p key={a.aya}>“{(a.translation ?? "").replace(/\[\d+\]/g, "").trim()}”</p>
           ))}
-          <p className="muted small-text">
-            {card.translation.translator} · v{card.translation.version} · {card.translation.source}
-          </p>
-        </div>
+          <cite>{card.translation.translator} · v{card.translation.version} · {card.translation.source}</cite>
+        </blockquote>
       )}
-      <div className="recitation">
-        <h3>{t("card.recitation")}</h3>
-        {card.ayahs.map((a) => (
-          <audio key={a.aya} controls preload="none" src={a.audio} />
-        ))}
-        <p className="muted small-text">{card.recitation.name} · {card.recitation.source}</p>
+      <div className="tiles">
+        <Tile label={t("card.surahName")} value={lang === "ar" ? card.sura_name.ar : card.sura_name.en} />
+        <Tile label={t("card.ayahNo")} value={`${num(ref.sura)} : ${ayahs}`} />
+        <Tile label={t("card.juz")} value={num(card.juz)} />
+        <Tile label={t("card.revelation")} value={card.revelation === "meccan" ? t("card.meccan") : t("card.medinan")} />
+        <Listen card={card} />
       </div>
-      <button className="btn primary big" onClick={onAsk}>{t("card.ask")}</button>
-      <details className="sources">
-        <summary>{t("card.sources")}</summary>
-        <ul>
-          {card.sources.map((s) => (
-            <li key={s.url}><a href={s.url} target="_blank" rel="noopener noreferrer">{s.label}</a></li>
-          ))}
-        </ul>
-      </details>
-      <button className="btn" onClick={onAgain}>{t("scan.again")}</button>
+      {onAsk && <button className="btn primary big" onClick={onAsk}>{t("card.ask")}</button>}
+      <p className="sources-line">{t("card.sourcesLine")} · {card.recitation.name} ({card.recitation.source})</p>
+      <button className="btn soft" onClick={onAgain}>{t("scan.again")}</button>
     </section>
+  );
+}
+
+function Tile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="tile">
+      <span className="tile-label">{label}</span>
+      <span className="tile-value">{value}</span>
+    </div>
+  );
+}
+
+/** Plays the card's ayahs one after another (human recitation from EveryAyah). */
+function Listen({ card }: { card: Card }) {
+  const t = useT();
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    return () => {
+      audio.current?.pause();
+    };
+  }, []);
+  const toggle = () => {
+    if (playing) {
+      audio.current?.pause();
+      setPlaying(false);
+      return;
+    }
+    let i = 0;
+    const play = () => {
+      const a = new Audio(card.ayahs[i]!.audio);
+      audio.current = a;
+      a.onended = () => {
+        i += 1;
+        if (i < card.ayahs.length) play();
+        else setPlaying(false);
+      };
+      void a.play().catch(() => setPlaying(false));
+    };
+    play();
+    setPlaying(true);
+  };
+  return (
+    <button className="tile listen" onClick={toggle}>
+      <span className="tile-label">{t("card.recitation")}</span>
+      <span className="tile-value">{playing ? `■ ${t("card.stop")}` : `▶ ${t("card.listen")}`}</span>
+    </button>
   );
 }
 
 type Msg = { role: "user" | "assistant"; text: string; reply?: ChatReply };
 
-function Chat({ card, onBack }: { card: Card; onBack: () => void }) {
+function citeLabel(c: Citation, card: Card, t: ReturnType<typeof useT>): string {
+  if (c.id === "D1") return t("cite.quran");
+  if (/translation/i.test(c.title)) return card.translation?.translator.replace("International", "Intl.") ?? c.source;
+  return t("cite.facts");
+}
+
+function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) {
   const t = useT();
-  const { lang } = useContextLang();
+  const { lang } = useLang();
+  const { card } = view;
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [banner, setBanner] = useState<string | null>(null);
   const [provider, setProvider] = useState<"local" | "anthropic">("local");
+  const [open, setOpen] = useState<string | null>(null);
   const end = useRef<HTMLDivElement>(null);
-  useEffect(() => end.current?.scrollIntoView({ behavior: "smooth" }), [msgs, busy]);
+  useEffect(() => {
+    // braces: never return scrollIntoView(...) — recent Chrome returns a Promise, which React would call as cleanup
+    end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [msgs, busy]);
 
   const send = async (q: string) => {
     if (!q.trim() || busy) return;
@@ -235,7 +322,6 @@ function Chat({ card, onBack }: { card: Card; onBack: () => void }) {
     setBusy(true);
     try {
       const r = await ask(card, q, history, lang, provider);
-      setBanner(r.banner);
       setMsgs((m) => [...m, { role: "assistant", text: r.answer, reply: r }]);
     } catch (err) {
       setMsgs((m) => [...m, { role: "assistant", text: `⚠ ${(err as Error).message}` }]);
@@ -243,48 +329,66 @@ function Chat({ card, onBack }: { card: Card; onBack: () => void }) {
       setBusy(false);
     }
   };
-
+  const name = lang === "ar" ? card.sura_name.ar : card.sura_name.en;
   return (
-    <section className="panel chat">
-      <div className="chat-top">
-        <button className="btn ghost" onClick={onBack}>← {t("chat.back")}</button>
+    <section className="sheet chat">
+      <div className="chat-head">
+        {onBack && (
+          <button className="btn ghost back" onClick={onBack} aria-label={t("chat.back")}>
+            {lang === "ar" ? "→" : "←"}
+          </button>
+        )}
+        <img src={view.photo} alt="" className="chat-thumb" />
+        <div className="chat-title">
+          <b>{name} {card.ref.label} · {t("chat.verifiedShort")}</b>
+          <span>{t("chat.subtitle")}</span>
+        </div>
+        <img src="/mark.svg" alt="" className="chat-mark" />
+      </div>
+      <div className="chat-tools">
+        <p className="banner">{t("chat.banner")}</p>
         <div className="seg" role="group" aria-label={t("chat.model")}>
           <button className={provider === "local" ? "on" : ""} onClick={() => setProvider("local")}>{t("chat.local")}</button>
           <button className={provider === "anthropic" ? "on" : ""} onClick={() => setProvider("anthropic")}>{t("chat.claude")}</button>
         </div>
       </div>
-      <h2>{t("chat.title")} · {lang === "ar" ? card.sura_name.ar : card.sura_name.en} {card.ref.label}</h2>
-      <p className="banner">{banner ?? (lang === "ar" ? "أنا مساعد ذكي يجيب من مصادر معتمدة، ولست عالمًا أو مفتيًا." : "I am an AI assistant that answers from approved sources. I am not a scholar or a mufti.")}</p>
-      {msgs.length === 0 && (
-        <div className="suggest">
-          {(["chat.s1", "chat.s2", "chat.s3"] as const).map((k) => (
-            <button key={k} className="btn" onClick={() => send(t(k))}>{t(k)}</button>
-          ))}
-        </div>
-      )}
       <div className="msgs">
-        {msgs.map((m, i) => (
-          <div key={i} className={`msg ${m.role}`}>
-            {m.role === "assistant" && m.reply && <span className="gen-label">{t("chat.generated")}</span>}
-            <p dir="auto">{m.text}</p>
-            {m.reply && m.reply.citations.length > 0 && (
-              <details className="cites">
-                <summary>{t("chat.sources")}: {m.reply.citations.map((c) => c.id).join(", ")}</summary>
-                {m.reply.citations.map((c) => (
-                  <div key={c.id} className="cite">
-                    <b>[{c.id}] {c.title}</b>
-                    <p dir="auto" className={c.id === "D1" ? "quran small-q" : ""}>{c.text}</p>
-                    <a href={c.url} target="_blank" rel="noopener noreferrer">{c.source}</a>
-                  </div>
-                ))}
-              </details>
-            )}
-            {m.reply?.referral && (
-              <div className="referral"><b>{t("chat.referral")}:</b> {m.reply.referral}</div>
-            )}
+        {msgs.length === 0 && (
+          <div className="suggest">
+            {(["chat.s1", "chat.s2", "chat.s3"] as const).map((k) => (
+              <button key={k} className="bubble-btn" onClick={() => void send(t(k))}>{t(k)}</button>
+            ))}
           </div>
-        ))}
-        {busy && <div className="msg assistant muted">{t("chat.thinking")}</div>}
+        )}
+        {msgs.map((m, i) => {
+          const referral = m.reply?.referral;
+          const text = m.text.replace(/\s*\[D\d+\]/g, "").trim();
+          const key = (c: Citation) => `${i}-${c.id}`;
+          return (
+            <div key={i} className={`bubble ${m.role} ${referral ? "referral" : ""}`}>
+              <p dir="auto">{text}</p>
+              {referral && <p className="referral-line" dir="auto"><b>{t("chat.referral")}:</b> {referral}</p>}
+              {m.reply && m.reply.citations.length > 0 && (
+                <div className="cite-chips">
+                  {m.reply.citations.map((c) => (
+                    <button key={c.id} className={`cite-chip ${open === key(c) ? "on" : ""}`}
+                      onClick={() => setOpen(open === key(c) ? null : key(c))}>
+                      {citeLabel(c, card, t)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {m.reply?.citations.filter((c) => open === key(c)).map((c) => (
+                <div key={c.id} className="cite-body">
+                  <p dir="auto" className={c.id === "D1" ? "quran small" : ""}>{c.text}</p>
+                  <a href={c.url} target="_blank" rel="noopener noreferrer">{c.source}</a>
+                </div>
+              ))}
+              {m.reply && <span className="gen-label">{t("chat.generated")}</span>}
+            </div>
+          );
+        })}
+        {busy && <div className="bubble assistant typing"><span /><span /><span /></div>}
         <div ref={end} />
       </div>
       <form className="ask" onSubmit={(e) => { e.preventDefault(); void send(input); }}>

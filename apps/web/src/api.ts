@@ -1,4 +1,4 @@
-export type Ayah = { aya: number; text_uthmani: string; translation: string | null; audio: string };
+export type Ayah = { aya: number; text_uthmani: string; text_display: string; translation: string | null; audio: string };
 export type Card = {
   ref: { sura: number; aya_from: number; aya_to: number; label: string };
   sura_name: { ar: string; en: string; en_meaning: string };
@@ -10,7 +10,7 @@ export type Card = {
   sources: { label: string; url: string }[];
 };
 export type ScanResult =
-  | { status: "matched"; card: Card; panel: { id: string; inliers: number; coverage: number } }
+  | { status: "matched"; card: Card; panel: { id: string; inliers: number; coverage: number; polygon: number[][] | null } }
   | { status: "uncertain" };
 export type Citation = { id: string; title: string; source: string; url: string; text: string };
 export type ChatReply = {

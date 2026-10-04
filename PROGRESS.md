@@ -209,3 +209,13 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
   → cited answers from the local model (≈ 1.5 s each when warm).
 - Found: one answer cited [D3] for "known as Ayat al-Kursi", which D3 does not contain → Day 2: citation-
   faithfulness check (each cited sentence must be supported by the cited document).
+
+## 2026-10-04 — Day 1: chat crash fix + brand/deck redesign
+- **Chat white page fixed.** A `useEffect` returned `scrollIntoView(...)`; recent Chrome returns a Promise from it, React called that as cleanup and crashed (`destroy_ is not a function`). Effect now uses braces. Checked in headless Chromium (`scripts/ops/ui_check.py`, phone + desktop): no page errors.
+- **Redesign to Nun_Brand.pdf + the NUN.pdf deck.** Brand tokens (green #1F5E57, lens gold #C9A04A, ink, paper), IBM Plex Sans Arabic UI, Amiri Quran for verses only. Home = camera viewfinder with gold corners + shutter; scanning = photo + gold sweep + «جارٍ التعرّف على الخط…» pill.
+- **Result screen.** Desktop (≥ 960 px): verse info on the reading-start side (right in Arabic), chat on the other half. Info = visitor photo with the matched panel's boundary in gold (matcher projects the panel corners through the RANSAC homography; `/api/scan` returns `panel.polygon`), chips «✓ تم التحقق من المطابقة» · «قرآني», Quran text, translation quote with translator/version, tiles السورة / رقم الآية / الجزء / النزول / التلاوة ▶ استمع (plays the ayahs in order), sources line. Phone: same card, then «اسأل عن هذه الآية» opens the chat full-screen.
+- **Chat panel like deck p.7.** Header (thumb, «البقرة 2:255 · تم التحقق», mark), AI banner, Local/Claude switch, user bubbles teal, answers white with citation chips (نص المصحف / Saheeh Intl. / Tanzil; tap shows the cited text + link), referral bubble cream with dashed gold border, «شرح مولَّد» label. `[Dn]` markers no longer shown in the text.
+- **Quran text rendering.** QuranEnc's `arabic_text` uses the KFGQPC encoding (U+065E etc.) → empty boxes in Amiri Quran. Corpus now also stores Tanzil's verbatim Uthmani (`text_uthmani_tanzil`, Basmala header separated incl. the بِّسْمِ variant of 95:1/97:1); the card's `text_display` and chat D1 use it. Build check: 6,236/6,236 ayahs agree with QuranEnc after normalisation. SOURCES.md updated.
+- `scripts/ops/restart_api.sh`: rebuild web + restart API only; the public tunnel link stays the same.
+- Tests: 86 passed; ruff clean.
+- Still open (Day 2): local model makes unsupported claims next to citations (e.g. wrong juz) and the quote guard leaves visible placeholders → citation-faithfulness check next.

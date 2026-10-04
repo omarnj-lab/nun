@@ -36,6 +36,8 @@ def build(store: CorpusStore, sura: int, aya_from: int, aya_to: int | None = Non
             {
                 "aya": r.aya,
                 "text_uthmani": r.text_uthmani,  # verbatim; never re-normalised or generated
+                # verbatim Tanzil Uthmani: same text, Unicode-standard marks that the Quran font renders
+                "text_display": r.text_uthmani_tanzil or r.text_uthmani,
                 "translation": tr[1].text if tr else None,
                 "footnotes": tr[1].footnotes if tr else None,
                 "audio": r.audio["alafasy"],
