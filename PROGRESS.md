@@ -226,3 +226,10 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
 - Trust row (Mushaf text verbatim · human recitation · photos not stored), three "how it works" cards, and a scrolling strip of the 18 demo panels (`apps/web/public/panels/`, 480 px copies of `can_show_publicly = yes` panels only).
 - Scanning screen shows live progress steps (reading → searching → verifying).
 - Checked in headless Chromium, phone + desktop, local and via the public link: sample → card 20:114, no page errors. 86 tests pass.
+
+## 2026-10-04 — KhaṭṭVision text regions, "touch to read", recitation player
+- **KhaṭṭVision in the app.** `apps/vision/server.py` runs the team's v1 model (Muse-Glimmer-30B 4-bit + LoRA, same prompt as the HF Space) on GPU 0 as an internal service (127.0.0.1:8001; ~25 s load, ~6–7 s per demo panel; output capped at 320 tokens). `serve_public.sh` starts it.
+- **`POST /api/regions`** (optional enrichment, after the card): text boxes in the visitor's photo + predicted script style. `nun/vlm/regions.py` parses the structured output (tolerates truncation) and aligns each region's reading to a span of the verified verse words (rapidfuzz ≥ 70). **The reading never leaves the server**; only boxes + word indices do (test enforces it). The card never depends on it; if the service is down → `{available: false}`.
+- **Novel feature: touch to read.** Region boxes in gold with numbered badges; tapping a region highlights its words in the Quran text (corpus text), tapping a word highlights its region. Style chip «خط الثلث», labelled as a KhaṭṭVision estimate in the sources line.
+- **Recitation player back, visible.** Play/pause, seek bar, time, reciter, ayah counter, live equaliser; the ayah being recited (Arabic + translation) is highlighted.
+- Checked in headless Chromium: demo panel → 1 region, 4 words lit; real wall photo → 3 regions. 93 tests pass.

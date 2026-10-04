@@ -83,6 +83,11 @@ const ar = {
   "scan.step1": "قراءة الصورة",
   "scan.step2": "البحث في المجموعة",
   "scan.step3": "التحقق من المطابقة",
+  "regions.loading": "KhaṭṭVision يحدد مواقع النص في صورتك…",
+  "regions.hint": "المس منطقة من الخط، أو كلمة من الآية، لترى ما يقابلها",
+  "regions.region": "منطقة نص",
+  "regions.source": "مواقع النص ونوع الخط: تقدير نموذج KhaṭṭVision",
+  "card.style": "خط",
   "footer.ai": "نون مساعد يعمل بالذكاء الاصطناعي ويعتمد على مصادر معتمدة.",
 } as const;
 
@@ -170,6 +175,11 @@ const en: Record<Key, string> = {
   "scan.step1": "Reading the photo",
   "scan.step2": "Searching the collection",
   "scan.step3": "Verifying the match",
+  "regions.loading": "KhaṭṭVision is locating the text in your photo…",
+  "regions.hint": "Tap a region of the calligraphy, or a word of the verse, to see its match",
+  "regions.region": "Text region",
+  "regions.source": "text regions and script style: KhaṭṭVision estimate",
+  "card.style": "Script:",
   "footer.ai": "Nūn is an AI-assisted guide built on approved sources.",
 };
 

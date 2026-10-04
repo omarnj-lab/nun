@@ -5,6 +5,7 @@
 /api/scan    photo → matcher against the product collection → the panel's verse card, or "couldn't identify".
              A verse is NEVER shown without a match. Photos are processed in memory and not stored.
 /api/verse   verse card from the corpus (never generated).
+/api/regions text regions of a matched photo from KhaṭṭVision (apps/vision, GPU 0), aligned to the verse words.
 /api/chat    chat about one verse, from the verse documents with citations (provider: local | anthropic).
 /admin       add-panel tool (HTTP Basic: ADMIN_PASSWORD in .env).
 /            the web app (apps/web/dist).
@@ -85,7 +86,7 @@ def rebuild_matcher() -> None:
 
 # ---- rate limiting (per client IP, sliding window) ----
 _hits: dict[tuple[str, str], deque] = defaultdict(deque)
-LIMITS = {"scan": (20, 60), "chat": (12, 60)}  # (requests, seconds)
+LIMITS = {"scan": (20, 60), "chat": (12, 60), "regions": (12, 60)}  # (requests, seconds)
 
 
 def client_ip(request: Request) -> str:
@@ -158,6 +159,46 @@ async def scan(request: Request, image: UploadFile = File(...), lang: str = Form
         },
         "card": card,
         "timings_ms": {"match": elapsed},
+    }
+
+
+VISION_URL = os.environ.get("VISION_URL", "http://127.0.0.1:8001")
+
+
+@app.post("/api/regions")
+async def regions(
+    request: Request,
+    image: UploadFile = File(...),
+    sura: int = Form(...),
+    aya_from: int = Form(...),
+    aya_to: int | None = Form(None),
+) -> dict:
+    """Where the text is in the visitor's photo and which verse words each region holds. Optional enrichment:
+    the verse card never depends on it, and the model's reading never leaves the server."""
+    import httpx
+
+    from nun.vlm.regions import regions_for_card
+
+    rate_limit(request, "regions")
+    im = await read_image(image)
+    try:
+        card = build_card(store, sura, aya_from, aya_to or aya_from, "en")
+    except KeyError:
+        raise HTTPException(404, "No such verse") from None
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=90)
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            r = await client.post(f"{VISION_URL}/analyze", content=buf.getvalue())
+        r.raise_for_status()
+    except httpx.HTTPError:
+        return {"available": False}
+    out = r.json()
+    return {
+        "available": True,
+        "styles": out.get("styles", []),
+        "regions": regions_for_card(out, card["ayahs"]),
+        "seconds": out.get("seconds"),
     }
 
 

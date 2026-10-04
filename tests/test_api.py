@@ -51,3 +51,46 @@ def test_admin_requires_password(client, monkeypatch) -> None:
 def test_no_cross_origin_access(client) -> None:
     r = client.get("/api/health", headers={"Origin": "https://evil.example"})
     assert "access-control-allow-origin" not in r.headers  # single-origin app: no CORS at all
+
+
+def _jpeg() -> bytes:
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (64, 64), "white").save(buf, "JPEG")
+    return buf.getvalue()
+
+
+def test_regions_unavailable_when_vision_service_is_down(client, monkeypatch) -> None:
+    monkeypatch.setattr(main, "VISION_URL", "http://127.0.0.1:9")  # nothing listens there
+    r = client.post("/api/regions", files={"image": ("p.jpg", _jpeg())}, data={"sura": 20, "aya_from": 114})
+    assert r.status_code == 200 and r.json() == {"available": False}
+
+
+def test_regions_never_return_the_model_reading(client, monkeypatch) -> None:
+    import httpx
+
+    reading = "وقل رب زدني علما"
+
+    class FakeClient:
+        def __init__(self, *a, **k) -> None: ...
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a) -> None: ...
+        async def post(self, url, content):
+            body = {"styles": ["Thuluth"], "regions": [{"box": [0.1, 0.3, 0.9, 0.6], "text": reading}], "seconds": 1}
+            return httpx.Response(200, json=body, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
+    r = client.post("/api/regions", files={"image": ("p.jpg", _jpeg())}, data={"sura": 20, "aya_from": 114})
+    body = r.json()
+    assert body["available"] and body["styles"] == ["Thuluth"]
+    assert body["regions"][0]["words"]  # aligned to the verse
+    assert reading not in r.text  # the reading stays on the server
+    assert (
+        client.post("/api/regions", files={"image": ("p.jpg", _jpeg())}, data={"sura": 999, "aya_from": 1}).status_code
+        == 404
+    )

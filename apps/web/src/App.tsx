@@ -1,8 +1,8 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { ask, scan, shrink, type Card, type ChatReply, type Citation, type Turn } from "./api";
+import { ask, regions, scan, shrink, type Card, type ChatReply, type Citation, type Region, type Regions, type Turn } from "./api";
 import { I18nContext, arabicDigits, dirOf, useT, type Key, type Lang } from "./i18n";
 
-type Matched = { photo: string; card: Card; polygon: number[][] | null };
+type Matched = { photo: string; upload: Blob; card: Card; polygon: number[][] | null };
 type View =
   | { name: "home" }
   | { name: "scanning"; photo: string }
@@ -146,10 +146,11 @@ function Home({ onView }: { onView: (v: View) => void }) {
     const photo = URL.createObjectURL(file); // stays in the browser; only a downscaled copy is sent
     onView({ name: "scanning", photo });
     try {
-      const r = await scan(await shrink(file), lang);
+      const upload = await shrink(file);
+      const r = await scan(upload, lang);
       onView(
         r.status === "matched"
-          ? { name: "result", chat: false, photo, card: r.card, polygon: r.panel.polygon ?? null }
+          ? { name: "result", chat: false, photo, upload, card: r.card, polygon: r.panel.polygon ?? null }
           : { name: "uncertain", photo },
       );
     } catch (err) {
@@ -315,21 +316,57 @@ function Workspace({ view, setChat, onAgain }: {
   );
 }
 
-/** The visitor's photo with the matched panel's boundary (projected by the matcher's homography) drawn in gold. */
-function PhotoWithOutline({ photo, polygon }: { photo: string; polygon: number[][] | null }) {
+const wordKey = (aya: number, i: number) => `${aya}:${i}`;
+
+/** The visitor's photo: the matched panel's boundary (matcher homography) in gold, and KhaṭṭVision's text regions.
+ *  Tapping a region lights up its words in the verse; tapping a word lights up its region. */
+function PhotoWithRegions({ photo, polygon, regs, active, onPick }: {
+  photo: string;
+  polygon: number[][] | null;
+  regs: Region[];
+  active: number | null;
+  onPick: (i: number | null) => void;
+}) {
+  const t = useT();
+  const { lang } = useLang();
   return (
     <figure className="photo-box">
       <div className="photo-frame">
         <img src={photo} alt="" />
-        {polygon && (
-          <svg viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-            <polygon points={polygon.map((p) => p.join(",")).join(" ")} vectorEffect="non-scaling-stroke" />
-          </svg>
-        )}
+        <svg viewBox="0 0 1 1" preserveAspectRatio="none">
+          {polygon && (
+            <polygon className="panel-outline" points={polygon.map((p) => p.join(",")).join(" ")} vectorEffect="non-scaling-stroke" />
+          )}
+          {regs.map((r, i) => (
+            <rect
+              key={i}
+              className={`region ${active === i ? "on" : ""} ${r.words.length ? "" : "no-words"}`}
+              x={r.box[0]} y={r.box[1]} width={r.box[2] - r.box[0]} height={r.box[3] - r.box[1]}
+              vectorEffect="non-scaling-stroke"
+              role="button"
+              aria-label={`${t("regions.region")} ${i + 1}`}
+              onClick={() => onPick(active === i ? null : i)}
+            />
+          ))}
+        </svg>
+        {regs.map((r, i) => (
+          <span
+            key={i}
+            className={`region-badge ${active === i ? "on" : ""}`}
+            style={{ left: `${r.box[0] * 100}%`, top: `${r.box[1] * 100}%` }}
+            onClick={() => onPick(active === i ? null : i)}
+          >
+            {lang === "ar" ? arabicDigits(i + 1) : i + 1}
+          </span>
+        ))}
       </div>
     </figure>
   );
 }
+
+const STYLE_AR: Record<string, string> = {
+  Thuluth: "الثلث", Diwani: "الديواني", Naskh: "النسخ", Kufic: "الكوفي", "Ruq'ah": "الرقعة", "Nasta'liq": "النستعليق",
+};
 
 function Info({ view, onAsk, onAgain }: { view: Matched; onAsk: (() => void) | null; onAgain: () => void }) {
   const t = useT();
@@ -338,25 +375,65 @@ function Info({ view, onAsk, onAgain }: { view: Matched; onAsk: (() => void) | n
   const num = (n: number) => (lang === "ar" ? arabicDigits(n) : String(n));
   const ref = card.ref;
   const ayahs = ref.aya_to !== ref.aya_from ? `${num(ref.aya_from)}–${num(ref.aya_to)}` : num(ref.aya_from);
+
+  const [regs, setRegs] = useState<Regions | "loading">("loading");
+  const [active, setActive] = useState<number | null>(null);
+  const [playingAya, setPlayingAya] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    regions(view.upload, card)
+      .then((r) => live && setRegs(r))
+      .catch(() => live && setRegs({ available: false }));
+    return () => {
+      live = false;
+    };
+  }, [view.upload, card]);
+  const list = regs !== "loading" && regs.available ? regs.regions : [];
+  const style = regs !== "loading" && regs.available ? regs.styles[0] : undefined;
+  const lit = new Set((active !== null ? list[active]?.words ?? [] : []).map(([a, i]) => wordKey(a, i)));
+  const pickWord = (aya: number, i: number) => {
+    const k = wordKey(aya, i);
+    const hit = list.findIndex((r) => r.words.some(([a, j]) => wordKey(a, j) === k));
+    setActive(hit >= 0 && hit !== active ? hit : null);
+  };
+
   return (
     <section className="sheet info">
-      <PhotoWithOutline photo={view.photo} polygon={view.polygon} />
-      <p className="caption">{t("card.flow")}</p>
+      <PhotoWithRegions photo={view.photo} polygon={view.polygon} regs={list} active={active} onPick={setActive} />
+      <div className="vision-line">
+        {regs === "loading" && <span className="vision-chip loading"><span className="spark" />{t("regions.loading")}</span>}
+        {list.length > 0 && <span className="vision-chip">{t("regions.hint")}</span>}
+        <span className="caption">{t("card.flow")}</span>
+      </div>
       <div className="chips">
         <span className="chip ok">✓ {t("card.verified")}</span>
         <span className="chip">{t("card.quranic")}</span>
+        {style && <span className="chip style">{t("card.style")} {lang === "ar" ? STYLE_AR[style] ?? style : style}</span>}
       </div>
       <div className="quran" dir="rtl" lang="ar">
         {card.ayahs.map((a) => (
-          <span key={a.aya}>
-            {a.text_display} <span className="aya-no">﴿{arabicDigits(a.aya)}﴾</span>{" "}
+          <span key={a.aya} className={playingAya === a.aya ? "reciting" : ""}>
+            {a.text_display.split(" ").map((w, i) => (
+              <span key={i}>
+                <span
+                  className={`w ${lit.has(wordKey(a.aya, i)) ? "lit" : ""} ${list.length ? "tappable" : ""}`}
+                  onClick={list.length ? () => pickWord(a.aya, i) : undefined}
+                >
+                  {w}
+                </span>{" "}
+              </span>
+            ))}
+            <span className="aya-no">﴿{arabicDigits(a.aya)}﴾</span>{" "}
           </span>
         ))}
       </div>
+      <Player card={card} onAyah={setPlayingAya} />
       {card.translation && (
         <blockquote className="translation" dir="ltr" lang="en">
           {card.ayahs.map((a) => (
-            <p key={a.aya}>“{(a.translation ?? "").replace(/\[\d+\]/g, "").trim()}”</p>
+            <p key={a.aya} className={playingAya === a.aya ? "reciting" : ""}>
+              “{(a.translation ?? "").replace(/\[\d+\]/g, "").trim()}”
+            </p>
           ))}
           <cite>{card.translation.translator} · v{card.translation.version} · {card.translation.source}</cite>
         </blockquote>
@@ -366,10 +443,12 @@ function Info({ view, onAsk, onAgain }: { view: Matched; onAsk: (() => void) | n
         <Tile label={t("card.ayahNo")} value={`${num(ref.sura)} : ${ayahs}`} />
         <Tile label={t("card.juz")} value={num(card.juz)} />
         <Tile label={t("card.revelation")} value={card.revelation === "meccan" ? t("card.meccan") : t("card.medinan")} />
-        <Listen card={card} />
       </div>
       {onAsk && <button className="btn primary big" onClick={onAsk}>{t("card.ask")}</button>}
-      <p className="sources-line">{t("card.sourcesLine")} · {card.recitation.name} ({card.recitation.source})</p>
+      <p className="sources-line">
+        {t("card.sourcesLine")} · {card.recitation.name} ({card.recitation.source})
+        {list.length > 0 && <> · {t("regions.source")}</>}
+      </p>
       <button className="btn soft" onClick={onAgain}>{t("scan.again")}</button>
     </section>
   );
@@ -384,41 +463,86 @@ function Tile({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Plays the card's ayahs one after another (human recitation from EveryAyah). */
-function Listen({ card }: { card: Card }) {
+const fmt = (s: number) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}` : "0:00");
+
+/** Human recitation (EveryAyah), ayah after ayah, with a visible seek bar; reports the ayah being recited. */
+function Player({ card, onAyah }: { card: Card; onAyah: (aya: number | null) => void }) {
   const t = useT();
-  const audio = useRef<HTMLAudioElement | null>(null);
+  const { lang } = useLang();
+  const audio = useRef<HTMLAudioElement>(null);
+  const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [time, setTime] = useState(0);
+  const [dur, setDur] = useState(0);
+  const autoNext = useRef(false);
+  const n = card.ayahs.length;
   useEffect(() => {
-    return () => {
-      audio.current?.pause();
-    };
-  }, []);
+    const a = audio.current;
+    if (a && autoNext.current) void a.play().catch(() => setPlaying(false));
+  }, [idx]);
+  useEffect(() => {
+    onAyah(playing ? card.ayahs[idx]!.aya : null);
+  }, [playing, idx, card, onAyah]);
   const toggle = () => {
-    if (playing) {
-      audio.current?.pause();
-      setPlaying(false);
-      return;
-    }
-    let i = 0;
-    const play = () => {
-      const a = new Audio(card.ayahs[i]!.audio);
-      audio.current = a;
-      a.onended = () => {
-        i += 1;
-        if (i < card.ayahs.length) play();
-        else setPlaying(false);
-      };
+    const a = audio.current;
+    if (!a) return;
+    if (a.paused) {
+      autoNext.current = true;
       void a.play().catch(() => setPlaying(false));
-    };
-    play();
-    setPlaying(true);
+    } else {
+      autoNext.current = false;
+      a.pause();
+    }
   };
+  const ended = () => {
+    if (idx + 1 < n) setIdx(idx + 1);
+    else {
+      autoNext.current = false;
+      setPlaying(false);
+      setIdx(0);
+    }
+  };
+  const num = (v: number) => (lang === "ar" ? arabicDigits(v) : String(v));
   return (
-    <button className="tile listen" onClick={toggle}>
-      <span className="tile-label">{t("card.recitation")}</span>
-      <span className="tile-value">{playing ? `■ ${t("card.stop")}` : `▶ ${t("card.listen")}`}</span>
-    </button>
+    <div className={`player ${playing ? "on" : ""}`}>
+      <audio
+        ref={audio}
+        src={card.ayahs[idx]!.audio}
+        preload="metadata"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={ended}
+        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDur(e.currentTarget.duration)}
+      />
+      <button className="play" onClick={toggle} aria-label={playing ? t("card.stop") : t("card.listen")}>
+        {playing ? (
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+        ) : (
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" /></svg>
+        )}
+      </button>
+      <div className="player-body">
+        <div className="player-top">
+          <b>{t("card.recitation")} · {card.recitation.name}</b>
+          <span>
+            {n > 1 ? `${t("card.ayah")} ${num(idx + 1)} / ${num(n)} · ` : ""}
+            <bdi dir="ltr">{fmt(time)} / {fmt(dur)}</bdi>
+          </span>
+        </div>
+        <input
+          type="range" min={0} max={dur || 1} step={0.1} value={time} dir="ltr"
+          aria-label={t("card.recitation")}
+          style={{ ["--p" as string]: `${dur ? (time / dur) * 100 : 0}%` }}
+          onChange={(e) => {
+            if (audio.current) audio.current.currentTime = Number(e.target.value);
+          }}
+        />
+        <div className={`bars ${playing ? "live" : ""}`} aria-hidden="true">
+          {Array.from({ length: 28 }, (_, i) => <i key={i} style={{ animationDelay: `${(i % 7) * 0.11}s` }} />)}
+        </div>
+      </div>
+    </div>
   );
 }
 

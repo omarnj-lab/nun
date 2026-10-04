@@ -22,6 +22,8 @@ export type ChatReply = {
   provider: string;
   model: string;
 };
+export type Region = { box: [number, number, number, number]; words: [number, number][] };
+export type Regions = { available: false } | { available: true; styles: string[]; regions: Region[]; seconds: number };
 export type Turn = { role: "user" | "assistant"; content: string };
 
 async function check<T>(r: Response): Promise<T> {
@@ -42,6 +44,16 @@ export async function scan(file: Blob, lang: string): Promise<ScanResult> {
   fd.append("image", file, "photo.jpg");
   fd.append("lang", lang);
   return check(await fetch("/api/scan", { method: "POST", body: fd }));
+}
+
+/** Text regions from KhaṭṭVision, aligned to the verse words (optional enrichment; may be unavailable). */
+export async function regions(file: Blob, card: Card): Promise<Regions> {
+  const fd = new FormData();
+  fd.append("image", file, "photo.jpg");
+  fd.append("sura", String(card.ref.sura));
+  fd.append("aya_from", String(card.ref.aya_from));
+  fd.append("aya_to", String(card.ref.aya_to));
+  return check(await fetch("/api/regions", { method: "POST", body: fd }));
 }
 
 export async function ask(

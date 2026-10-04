@@ -33,6 +33,14 @@ with sync_playwright() as p:
     page.wait_for_selector(".quran, .notice", timeout=120_000)
     page.wait_for_timeout(800)
     page.screenshot(path=OUT / f"{tag}_2_result.png", full_page=True)
+    try:  # KhaṭṭVision text regions arrive after the card
+        page.wait_for_selector(".region-badge", timeout=120_000)
+        page.locator(".region-badge").first.click()
+        page.wait_for_timeout(500)
+        print("regions:", page.locator(".region-badge").count(), "· lit words:", page.locator(".w.lit").count())
+        page.screenshot(path=OUT / f"{tag}_2b_regions.png", full_page=True)
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"no regions: {type(e).__name__}")
     ask = page.locator("text=/اسأل عن هذه الآية|Ask about this verse/")
     if ask.count():
         ask.first.click()

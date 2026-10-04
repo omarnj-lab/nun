@@ -14,6 +14,10 @@ if ! curl -s -m 3 http://127.0.0.1:11435/api/tags >/dev/null; then
   PIDS+=($!)
   for _ in $(seq 1 60); do curl -s -m 2 http://127.0.0.1:11435/api/tags >/dev/null && break; sleep 1; done
 fi
+if ! curl -s -m 2 http://127.0.0.1:8001/health >/dev/null; then  # KhaṭṭVision on GPU 0 (text regions; optional)
+  CUDA_VISIBLE_DEVICES=0 PYTHONPATH=. ~/.venvs/nun/bin/uvicorn apps.vision.server:app --host 127.0.0.1 --port 8001     > data/vision.log 2>&1 &
+  PIDS+=($!)
+fi
 if ss -ltn | grep -q ":$PORT "; then echo "Port $PORT is busy: stop the other server first."; exit 1; fi
 
 PYTHONPATH=. ~/.venvs/nun/bin/uvicorn apps.api.main:app --host 127.0.0.1 --port $PORT --workers 1 > data/api.log 2>&1 &
