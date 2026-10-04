@@ -219,3 +219,10 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
 - `scripts/ops/restart_api.sh`: rebuild web + restart API only; the public tunnel link stays the same.
 - Tests: 86 passed; ruff clean.
 - Still open (Day 2): local model makes unsupported claims next to citations (e.g. wrong juz) and the quote guard leaves visible placeholders → citation-faithfulness check next.
+
+## 2026-10-04 — Landing page redesign (user: "make UI super attractive")
+- New landing modelled on the NUN.pdf cover: track pill, full «نون» lockup, headline with the key phrase highlighted, ﴿نٓ وَٱلۡقَلَمِ…﴾ fetched from the corpus via `/api/verse/68/1` (not typed into the UI), lead text, CTAs «صوّر لوحة» (camera) / «ارفع صورة», and «جرّب بلوحة مثال» which scans `sample.jpg` end-to-end (for judges without a panel at hand).
+- Collage of three real collection panels (tilted, floating) with gold viewfinder corners, scan sweep and a «تم التحقق · طه ١١٤» result chip; faint eight-point-star lattice behind the hero.
+- Trust row (Mushaf text verbatim · human recitation · photos not stored), three "how it works" cards, and a scrolling strip of the 18 demo panels (`apps/web/public/panels/`, 480 px copies of `can_show_publicly = yes` panels only).
+- Scanning screen shows live progress steps (reading → searching → verifying).
+- Checked in headless Chromium, phone + desktop, local and via the public link: sample → card 20:114, no page errors. 86 tests pass.

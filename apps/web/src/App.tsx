@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { ask, scan, shrink, type Card, type ChatReply, type Citation, type Turn } from "./api";
-import { I18nContext, arabicDigits, dirOf, useT, type Lang } from "./i18n";
+import { I18nContext, arabicDigits, dirOf, useT, type Key, type Lang } from "./i18n";
 
 type Matched = { photo: string; card: Card; polygon: number[][] | null };
 type View =
@@ -45,7 +45,7 @@ function Shell() {
   const [view, setView] = useState<View>({ name: "home" });
   const home = () => setView({ name: "home" });
   return (
-    <div className={`app ${view.name === "result" ? "wide" : ""}`}>
+    <div className={`app ${view.name === "result" || view.name === "home" ? "wide" : ""} view-${view.name}`}>
       <Header onHome={home} />
       <main className="main">
         {view.name === "home" && <Home onView={setView} />}
@@ -80,13 +80,69 @@ function Header({ onHome }: { onHome: () => void }) {
   );
 }
 
+const PANELS = [
+  "02_ivory_blue", "03_navy_gold", "07_teal_silver", "09_burgundy_gold", "15_forest_gold", "05_lapis_illumination",
+  "21_peacock_gold", "13_plum_pearl", "24_midnight_gold", "04_rose_parchment", "12_indigo_copper", "17_white_gold",
+  "22_wine_ivory", "11_cobalt_white", "16_turquoise_cream", "23_mint_blue", "19_charcoal_silver", "08_sage_cream",
+];
+const panelSrc = (id: string) => `/panels/${id}.jpg`;
+
+const Icon = {
+  camera: (
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>
+  ),
+  upload: (
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 15v4h14v-4" /></svg>
+  ),
+  verify: (
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>
+  ),
+  chat: (
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H10l-4 4v-4H5z" /><path d="M9 10h6" /></svg>
+  ),
+  book: (
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5c3-1 5.5-.5 8 1.5C14.5 4.5 17 4 20 5v13c-3-1-5.5-.5-8 1.5C9.5 17.5 7 17 4 18z" /><path d="M12 6.5v13" /></svg>
+  ),
+  wave: (
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" /></svg>
+  ),
+  lock: (
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+  ),
+};
+
+/** The hero's verse comes from the corpus through the API (never typed into the UI). */
+function HeroVerse() {
+  const { lang } = useLang();
+  const [v, setV] = useState<{ text: string; ref: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/verse/68/1?lang=${lang}`)
+      .then((r) => (r.ok ? (r.json() as Promise<Card>) : null))
+      .then((c) => {
+        if (live && c?.ayahs[0]) {
+          const name = lang === "ar" ? c.sura_name.ar : c.sura_name.en;
+          setV({ text: c.ayahs[0].text_display, ref: `${name} : ${lang === "ar" ? arabicDigits(1) : 1}` });
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [lang]);
+  if (!v) return <div className="hero-verse placeholder" />;
+  return (
+    <p className="hero-verse">
+      <span className="quran" dir="rtl" lang="ar">﴿{v.text}﴾</span>
+      <span className="hero-verse-ref">{v.ref}</span>
+    </p>
+  );
+}
+
 function Home({ onView }: { onView: (v: View) => void }) {
   const t = useT();
   const { lang } = useLang();
-  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  const run = async (file: Blob) => {
     const photo = URL.createObjectURL(file); // stays in the browser; only a downscaled copy is sent
     onView({ name: "scanning", photo });
     try {
@@ -100,39 +156,114 @@ function Home({ onView }: { onView: (v: View) => void }) {
       onView({ name: "error", message: (err as Error).message });
     }
   };
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) void run(file);
+  };
+  const trySample = async () => {
+    const blob = await (await fetch("/sample.jpg")).blob();
+    void run(blob);
+  };
   return (
-    <section className="home">
-      <h1 className="hero">{t("home.title")}</h1>
-      <div className="viewfinder">
-        <img src="/sample.jpg" alt="" />
-        <span className="corner tl" /><span className="corner tr" /><span className="corner bl" /><span className="corner br" />
-      </div>
-      <label className="shutter" aria-label={t("home.capture")}>
-        <span className="shutter-ring"><span className="shutter-dot" /></span>
-        <span>{t("home.shutter")}</span>
-        <input type="file" accept="image/*" capture="environment" hidden onChange={onPick} />
-      </label>
-      <label className="btn soft">
-        {t("home.upload")}
-        <input type="file" accept="image/*" hidden onChange={onPick} />
-      </label>
-      <p className="hint">{t("home.hint")}</p>
-      <p className="hint">{t("home.privacy")}</p>
-    </section>
+    <div className="landing">
+      <section className="hero">
+        <div className="hero-text">
+          <span className="track-pill">{t("hero.track")}</span>
+          <img src="/logo.svg" alt={t("app.name")} className="hero-logo" />
+          <h1 className="hero-title">
+            {t("hero.h1a")}<em>{t("hero.h1b")}</em>{t("hero.h1c")}
+          </h1>
+          <HeroVerse />
+          <p className="hero-lead">{t("hero.lead")}</p>
+          <div className="cta-row">
+            <label className="cta primary">
+              {Icon.camera}
+              <span>{t("hero.camera")}</span>
+              <input type="file" accept="image/*" capture="environment" hidden onChange={onPick} />
+            </label>
+            <label className="cta">
+              {Icon.upload}
+              <span>{t("hero.upload")}</span>
+              <input type="file" accept="image/*" hidden onChange={onPick} />
+            </label>
+          </div>
+          <button className="sample-link" onClick={() => void trySample()}>
+            <img src={panelSrc("02_ivory_blue")} alt="" /> {t("hero.sample")} {lang === "ar" ? "←" : "→"}
+          </button>
+        </div>
+        <div className="collage" aria-hidden="true">
+          <img className="card c-back" src={panelSrc("03_navy_gold")} alt="" />
+          <img className="card c-mid" src={panelSrc("07_teal_silver")} alt="" />
+          <div className="card c-front">
+            <img src={panelSrc("02_ivory_blue")} alt="" />
+            <span className="corner tl" /><span className="corner tr" /><span className="corner bl" /><span className="corner br" />
+            <div className="scan-line" />
+          </div>
+          <div className="result-chip">
+            <span className="tick">✓</span>
+            <span><b>{t("hero.previewOk")}</b><small>{t("hero.previewRef")}</small></span>
+          </div>
+        </div>
+      </section>
+
+      <ul className="trust">
+        <li>{Icon.book}<span>{t("trust.text")}</span></li>
+        <li>{Icon.wave}<span>{t("trust.voice")}</span></li>
+        <li>{Icon.lock}<span>{t("trust.privacy")}</span></li>
+      </ul>
+
+      <section className="steps">
+        <h2>{t("steps.title")}</h2>
+        <ol>
+          {([["1", Icon.camera], ["2", Icon.verify], ["3", Icon.chat]] as const).map(([n, icon]) => (
+            <li key={n}>
+              <span className="step-icon">{icon}</span>
+              <span className="step-no">{lang === "ar" ? arabicDigits(n) : n}</span>
+              <h3>{t(`steps.${n}t` as Key)}</h3>
+              <p>{t(`steps.${n}d` as Key)}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="gallery">
+        <h2>{t("gallery.title")}</h2>
+        <p>{t("gallery.sub")}</p>
+        <div className="marquee" dir="ltr">
+          <div className="marquee-track">
+            {[...PANELS, ...PANELS].map((id, i) => (
+              <img key={i} src={panelSrc(id)} alt="" loading="lazy" />
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 
 function Scanning({ photo }: { photo: string }) {
   const t = useT();
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setStep((s) => Math.min(s + 1, 2)), 900);
+    return () => window.clearInterval(id);
+  }, []);
   return (
-    <section className="home">
+    <section className="scanning">
       <div className="viewfinder live">
         <span className="pill">{t("scan.pill")}</span>
         <img src={photo} alt="" />
         <span className="corner tl" /><span className="corner tr" /><span className="corner bl" /><span className="corner br" />
         <div className="scan-line" />
       </div>
-      <p className="hint">{t("scan.working")}</p>
+      <ol className="scan-steps">
+        {(["scan.step1", "scan.step2", "scan.step3"] as const).map((k, i) => (
+          <li key={k} className={i < step ? "done" : i === step ? "now" : ""}>
+            <span className="dot">{i < step ? "✓" : ""}</span>{t(k)}
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }

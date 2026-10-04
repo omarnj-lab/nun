@@ -27,6 +27,7 @@ with sync_playwright() as p:
     )
     page.on("pageerror", lambda e: errors.append(f"PAGE ERROR: {e}"))
     page.goto(BASE, wait_until="networkidle")
+    page.wait_for_timeout(2500)
     page.screenshot(path=OUT / f"{tag}_1_home.png", full_page=True)
     page.locator("input[type=file]").last.set_input_files(PHOTO)
     page.wait_for_selector(".quran, .notice", timeout=120_000)
