@@ -2,11 +2,12 @@
 nearest place in the Quran is shown ONLY when the reading is safe to trust. Otherwise the visitor still gets what the
 model saw (script style, where the text is, whether it looks Quranic), never a guessed verse.
 
-Gate (calibrated on the team's 195-panel internal set, eval/results/2026-10-05/reading_gate.md):
+Gate (calibrated on the team's 195-panel internal set with KhaṭṭVision's own style/theme labels,
+eval/results/2026-10-05/reading_gate.md: 26 verses shown, 25 right, 1 wrong = 0.5% of panels):
   1. KhaṭṭVision's theme is "quranic" (otherwise: not a Quran verse → no verse shown);
   2. the script is one the model reads reliably (Naskh): on ornate scripts the model can write a fluent but wrong
      verse from memory, which no score threshold catches;
-  3. the strongest line matches a Quran passage with score ≥ 90 over ≥ 15 letters, is not just the Basmala, and no
+  3. the strongest line matches a Quran passage with score ≥ 90 over ≥ 30 letters, is not just the Basmala, and no
      other strong line points elsewhere.
 """
 
@@ -15,7 +16,7 @@ from __future__ import annotations
 from nun.retrieval.verse_search import searcher
 
 MIN_SCORE = 90
-MIN_LETTERS = 15
+MIN_LETTERS = 30  # short famous phrases (e.g. 55:13, 2:156) are where the model recalls instead of reading
 RELIABLE_STYLES = {"Naskh"}
 
 

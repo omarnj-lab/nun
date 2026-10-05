@@ -226,8 +226,8 @@ if __name__ == "__main__":  # the original evaluation; importing only exposes th
         if len(F) >= 5:
             ans = F[(F.pred_score >= 90) & (F.pred_len >= 8)]
             print(
-                f"  {st:12} n={len(F):3}  top1={F.correct.mean():.2f}  answered@90={len(ans)/len(F):.2f}  "
-                f"prec@90={(ans.correct.mean() if len(ans) else float('nan')):.2f}  confident_wrong@90={(~ans.correct).sum()/len(F):.2f}"
+                f"  {st:12} n={len(F):3}  top1={F.correct.mean():.2f}  answered@90={len(ans) / len(F):.2f}  "
+                f"prec@90={(ans.correct.mean() if len(ans) else float('nan')):.2f}  confident_wrong@90={(~ans.correct).sum() / len(F):.2f}"
             )
     print(
         "\nheld-out: gold is Basmala only:",
