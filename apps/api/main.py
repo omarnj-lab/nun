@@ -246,6 +246,41 @@ async def read_path(im: Image.Image, lang: str, match_ms: int) -> dict:
     }
 
 
+@app.post("/api/lab/analyze")
+async def lab_analyze(request: Request, image: UploadFile = File(...)) -> dict:
+    """KhaṭṭVision Lab: what our model ALONE sees in any photo (style, theme, text regions, the nearest Mushaf place of
+    its reading with the match score). No independent check here, so the place is labelled unverified in the UI;
+    the model's reading itself is never returned."""
+    from nun import reading
+
+    rate_limit(request, "regions")
+    im = await read_image(image)
+    t = time.perf_counter()
+    out = await analyze(im)
+    if out is None:
+        return {"available": False}
+    best, why = reading.candidate(out)
+    nearest = None
+    if best is not None:
+        c = build_card(store, best.sura, best.aya_from, best.aya_to, "en")
+        nearest = {
+            "label": c["ref"]["label"],
+            "sura_ar": c["sura_name"]["ar"],
+            "sura_en": c["sura_name"]["en"],
+            "score": round(best.score, 1),
+            "letters": best.qlen,
+        }
+    return {
+        "available": True,
+        "styles": out.get("styles", []),
+        "theme": out.get("theme"),
+        "boxes": [r["box"] for r in out.get("regions", [])],
+        "nearest": nearest,
+        "reason": why,
+        "seconds": round(time.perf_counter() - t, 1),
+    }
+
+
 @app.post("/api/regions")
 async def regions(
     request: Request,

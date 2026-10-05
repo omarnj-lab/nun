@@ -63,6 +63,7 @@ extend-exclude = ["training/reference", "eval/notebooks", "analysis"]
 "eval/recognition_compare.py" = ["E501"]  # results table
 "scripts/ops/ui_jank.py" = ["E501"]  # embedded JavaScript
 "scripts/ops/make_naskh_test.py" = ["E501"]  # embedded HTML
+"scripts/ops/ui_karaoke.py" = ["E501"]  # embedded JavaScript
 "eval/recognition_agreement.py" = ["E501"]  # results table
 
 [tool.ruff.lint]

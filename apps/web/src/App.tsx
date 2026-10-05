@@ -1,7 +1,8 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ask, regions, scan, shrink, type Card, type ChatReply, type Citation, type Quiz, type Reading, type Region, type Regions, type Seen, type Turn } from "./api";
 import { I18nContext, arabicDigits, dirOf, useT, type Key, type Lang } from "./i18n";
 import { Explore, PreGuess, getQuiz, readPassport, stamp } from "./Journey";
+import { Lab } from "./Lab";
 
 type Matched = {
   photo: string;
@@ -47,7 +48,8 @@ type View =
   | { name: "scanning"; photo: string }
   | ({ name: "result"; chat: boolean } & Matched)
   | { name: "uncertain"; photo: string; notQuranic: boolean; reason?: string; seen: Seen | null }
-  | { name: "error"; message: string };
+  | { name: "error"; message: string }
+  | { name: "lab" };
 
 function initialLang(): Lang {
   try {
@@ -84,10 +86,11 @@ function Shell() {
   const [view, setView] = useState<View>({ name: "home" });
   const home = () => setView({ name: "home" });
   return (
-    <div className={`app ${view.name === "result" || view.name === "home" ? "wide" : ""} view-${view.name}`}>
-      <Header onHome={home} />
+    <div className={`app ${view.name === "result" || view.name === "home" || view.name === "lab" ? "wide" : ""} view-${view.name}`}>
+      <Header onHome={home} onLab={() => { window.scrollTo({ top: 0 }); setView({ name: "lab" }); }} />
       <main className="main">
         {view.name === "home" && <Home onView={setView} />}
+        {view.name === "lab" && <Lab onBack={home} />}
         {view.name === "scanning" && <Scanning photo={view.photo} />}
         {view.name === "result" && (
           <Workspace key={view.photo} view={view} setChat={(chat) => setView({ ...view, chat })} onAgain={home} onView={setView} />
@@ -106,7 +109,7 @@ function Shell() {
   );
 }
 
-function Header({ onHome }: { onHome: () => void }) {
+function Header({ onHome, onLab }: { onHome: () => void; onLab: () => void }) {
   const t = useT();
   const { lang, setLang } = useLang();
   return (
@@ -114,7 +117,13 @@ function Header({ onHome }: { onHome: () => void }) {
       <button className="logo-btn" onClick={onHome} aria-label={t("app.name")}>
         <img src="/logo.svg" alt={t("app.name")} className="logo" />
       </button>
-      <button className="btn ghost" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>{t("lang.switch")}</button>
+      <div className="header-actions">
+        <button className="lab-link" onClick={onLab}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3" /><path d="M7 15h10" /></svg>
+          {t("lab.open")}
+        </button>
+        <button className="btn ghost" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>{t("lang.switch")}</button>
+      </div>
     </header>
   );
 }
@@ -402,12 +411,13 @@ const wordKey = (aya: number, i: number) => `${aya}:${i}`;
 
 /** The visitor's photo: the matched panel's boundary (matcher homography) in gold, and KhaṭṭVision's text regions.
  *  Tapping a region lights up its words in the verse; tapping a word lights up its region. */
-function PhotoWithRegions({ photo, polygon, regs, active, onPick }: {
+function PhotoWithRegions({ photo, polygon, regs, active, onPick, singing = -1 }: {
   photo: string;
   polygon: number[][] | null;
   regs: Region[];
   active: number | null;
   onPick: (i: number | null) => void;
+  singing?: number;
 }) {
   const t = useT();
   const { lang } = useLang();
@@ -422,7 +432,7 @@ function PhotoWithRegions({ photo, polygon, regs, active, onPick }: {
           {regs.map((r, i) => (
             <rect
               key={i}
-              className={`region ${active === i ? "on" : ""} ${r.words.length ? "" : "no-words"}`}
+              className={`region ${active === i ? "on" : ""} ${singing === i ? "singing" : ""} ${r.words.length ? "" : "no-words"}`}
               x={r.box[0]} y={r.box[1]} width={r.box[2] - r.box[0]} height={r.box[3] - r.box[1]}
               vectorEffect="non-scaling-stroke"
               role="button"
@@ -465,7 +475,8 @@ function Info({ view, onAsk, onAgain, onScan }: {
 
   const [regs, setRegs] = useState<Regions | "loading">("loading");
   const [active, setActive] = useState<number | null>(null);
-  const [playingAya, setPlayingAya] = useState<number | null>(null);
+  const [tick, setTick] = useState<{ aya: number; frac: number } | null>(null);
+  const playingAya = tick?.aya ?? null;
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [pre, setPre] = useState<boolean | null | undefined>(undefined); // undefined = not answered yet
   const [passport, setPassport] = useState<string[]>([]);
@@ -494,6 +505,53 @@ function Info({ view, onAsk, onAgain, onScan }: {
   const list = regs !== "loading" && regs.available ? regs.regions : [];
   const style = regs !== "loading" && regs.available ? regs.styles[0] : undefined;
   const lit = new Set((active !== null ? list[active]?.words ?? [] : []).map(([a, i]) => wordKey(a, i)));
+  const sung = useMemo(() => {
+    if (!tick) return null;
+    const a = card.ayahs.find((x) => x.aya === tick.aya);
+    if (!a) return null;
+    const words = a.text_display.split(" ").map((w, i) => ({ i, n: w.replace(/[^\u0621-\u064a]/g, "").length }));
+    const total = words.reduce((s, w) => s + w.n, 0) || 1;
+    const f = Math.min(1, Math.max(0, (tick.frac - 0.04) / 0.92)); // short silence at both ends of each file
+    let acc = 0;
+    for (const w of words) {
+      acc += w.n / total;
+      if (w.n && f <= acc) return w.i;
+    }
+    return words.length - 1;
+  }, [tick, card]);
+  const sungKey = tick && sung !== null ? wordKey(tick.aya, sung) : null;
+  // which photo region holds each recited word: the model's own alignment when its regions hold different words;
+  // when they overlap (it labelled several lines with the whole verse), the verse is spread over the lines in reading
+  // order (top to bottom, right to left), in proportion to each line's width
+  const wordRegion = useMemo(() => {
+    const m = new Map<string, number>();
+    const withWords = list.map((r, i) => ({ r, i })).filter(({ r }) => r.words.length);
+    const keys = withWords.flatMap(({ r }) => r.words.map(([a, j]) => wordKey(a, j)));
+    const overlapping = keys.length > new Set(keys).size * 1.3;
+    const lines = list
+      .map((r, i) => ({ i, cy: (r.box[1] + r.box[3]) / 2, cx: (r.box[0] + r.box[2]) / 2, w: r.box[2] - r.box[0], h: r.box[3] - r.box[1] }))
+      .filter((l) => l.w > l.h * 1.5) // text lines, not a single large word
+      .sort((p, q) => (Math.abs(p.cy - q.cy) > 0.05 ? p.cy - q.cy : q.cx - p.cx));
+    const linesWithOwnWords = lines.filter((l) => list[l.i]!.words.length > 0).length;
+    if (!overlapping && (lines.length < 2 || linesWithOwnWords === lines.length)) {
+      for (const { r, i } of withWords) for (const [a, j] of r.words) if (!m.has(wordKey(a, j))) m.set(wordKey(a, j), i);
+      return m;
+    }
+    const verse = card.ayahs.flatMap((a) =>
+      a.text_display.split(" ").map((w, j) => ({ k: wordKey(a.aya, j), n: w.replace(/[^ء-ي]/g, "").length })),
+    ).filter((x) => x.n);
+    if (!lines.length) return m;
+    const totalW = lines.reduce((s2, l) => s2 + l.w, 0);
+    const totalN = verse.reduce((s2, x) => s2 + x.n, 0);
+    let acc = 0, li = 0, edge = lines[0]!.w / totalW;
+    for (const x of verse) {
+      acc += x.n / totalN;
+      while (acc > edge + 1e-9 && li < lines.length - 1) edge += lines[++li]!.w / totalW;
+      m.set(x.k, lines[li]!.i);
+    }
+    return m;
+  }, [list, card]);
+  const singing = sungKey ? wordRegion.get(sungKey) ?? -1 : -1;
   const pickWord = (aya: number, i: number) => {
     const k = wordKey(aya, i);
     const hit = list.findIndex((r) => r.words.some(([a, j]) => wordKey(a, j) === k));
@@ -502,7 +560,8 @@ function Info({ view, onAsk, onAgain, onScan }: {
 
   return (
     <section className="sheet info">
-      <PhotoWithRegions photo={view.photo} polygon={view.polygon} regs={list} active={active} onPick={setActive} />
+      <PhotoWithRegions photo={view.photo} polygon={view.polygon} regs={list} active={active} onPick={setActive} singing={singing} />
+      {tick && singing >= 0 && <p className="on-panel">{t("karaoke.on")}</p>}
       <div className="vision-line">
         {regs === "loading" && <span className="vision-chip loading"><span className="spark" />{t("regions.loading")}</span>}
         {list.length > 0 && <span className="vision-chip">{t("regions.hint")}</span>}
@@ -526,7 +585,7 @@ function Info({ view, onAsk, onAgain, onScan }: {
             {a.text_display.split(" ").map((w, i) => (
               <span key={i}>
                 <span
-                  className={`w ${lit.has(wordKey(a.aya, i)) ? "lit" : ""} ${list.length ? "tappable" : ""}`}
+                  className={`w ${lit.has(wordKey(a.aya, i)) ? "lit" : ""} ${list.length ? "tappable" : ""} ${sungKey === wordKey(a.aya, i) ? "sung" : ""}`}
                   onClick={list.length ? () => pickWord(a.aya, i) : undefined}
                 >
                   {w}
@@ -537,7 +596,7 @@ function Info({ view, onAsk, onAgain, onScan }: {
           </span>
         ))}
       </div>
-      <Player card={card} onAyah={setPlayingAya} />
+      <Player card={card} onTick={setTick} />
       {pre === undefined && quiz && <PreGuess quiz={quiz} onDone={setPre} />}
       {pre !== undefined && pre !== null && (
         <p className={`guess-feedback ${pre ? "right" : "wrong"}`}>{pre ? t("guess.right") : t("guess.wrong")}</p>
@@ -592,7 +651,7 @@ function Tile({ label, value }: { label: string; value: string }) {
 const fmt = (s: number) => (Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}` : "0:00");
 
 /** Human recitation (EveryAyah), ayah after ayah, with a visible seek bar; reports the ayah being recited. */
-function Player({ card, onAyah }: { card: Card; onAyah: (aya: number | null) => void }) {
+function Player({ card, onTick }: { card: Card; onTick: (t: { aya: number; frac: number } | null) => void }) {
   const t = useT();
   const { lang } = useLang();
   const audio = useRef<HTMLAudioElement>(null);
@@ -607,8 +666,8 @@ function Player({ card, onAyah }: { card: Card; onAyah: (aya: number | null) => 
     if (a && autoNext.current) void a.play().catch(() => setPlaying(false));
   }, [idx]);
   useEffect(() => {
-    onAyah(playing ? card.ayahs[idx]!.aya : null);
-  }, [playing, idx, card, onAyah]);
+    onTick(playing ? { aya: card.ayahs[idx]!.aya, frac: dur ? time / dur : 0 } : null);
+  }, [playing, idx, card, onTick, time, dur]);
   const toggle = () => {
     const a = audio.current;
     if (!a) return;
