@@ -320,6 +320,15 @@ button { font: inherit; color: inherit; }
   .chat { min-height: calc(100vh - 140px); }
 }
 
+.thinking { gap: 6px; font-size: 14px; }
+.thinking span { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.thinking span.now { color: var(--ink); font-weight: 600; }
+.thinking span.done { color: var(--ok); }
+.thinking i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center;
+  font-style: normal; font-size: 11px; flex: none; }
+.thinking span.now i { border-color: var(--gold); border-top-color: transparent; animation: spin .8s linear infinite; }
+.thinking span.done i { background: var(--ok-soft); border-color: var(--ok-soft); }
+
 /* ---------- journey (Journey.tsx) ---------- */
 .translation.reveal { animation: reveal .5s ease both; }
 @keyframes reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

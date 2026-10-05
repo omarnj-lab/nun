@@ -128,6 +128,9 @@ const ar = {
   "quiz.preRight": "وكان تخمينك قبل القراءة صحيحًا.",
   "quiz.preWrong": "قبل القراءة لم يكن التخمين صحيحًا؛ والآن فهمتها.",
   "quiz.privacy": "نسجّل النتيجة دون أي معلومات شخصية، لقياس أثر نون في الفهم.",
+  "think.sources": "يبحث في المصادر المعتمدة",
+  "think.writing": "يكتب الإجابة",
+  "think.checking": "يتحقق من كل جملة مقابل مصدرها",
   "footer.ai": "نون مساعد يعمل بالذكاء الاصطناعي ويعتمد على مصادر معتمدة.",
 } as const;
 
@@ -260,6 +263,9 @@ const en: Record<Key, string> = {
   "quiz.preRight": "And your guess before reading was right.",
   "quiz.preWrong": "Your guess before reading missed; now you know it.",
   "quiz.privacy": "We record the score with no personal information, to measure Nūn's effect on understanding.",
+  "think.sources": "Searching the approved sources",
+  "think.writing": "Writing the answer",
+  "think.checking": "Checking each sentence against its source",
   "footer.ai": "Nūn is an AI-assisted guide built on approved sources.",
 };
 

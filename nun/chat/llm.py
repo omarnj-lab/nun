@@ -70,7 +70,7 @@ class Claude:
         return next(b.text for b in resp.content if b.type == "text")
 
     def complete(self, system: str, messages: list[dict]) -> str:
-        return self._create(system, messages, {"effort": "medium"})
+        return self._create(system, messages, {"effort": os.environ.get("ANSWER_EFFORT", "low")})
 
     def complete_json(self, system: str, messages: list[dict], schema: dict) -> dict:
         fmt = {"effort": "low", "format": {"type": "json_schema", "schema": schema}}

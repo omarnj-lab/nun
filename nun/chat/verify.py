@@ -14,6 +14,8 @@ import re
 SENTENCE = re.compile(r"[^.!?؟。\n]+(?:[.!?؟。]+|\n|$)")
 CITE = re.compile(r"\[(D\d+)\]")
 NUMBER = re.compile(r"\d+")
+JUZ_WORD = r"(?:juz'?|cüz(?:ü|ünde|de)?|الجزء|جزء|پارہ|پارے|juzuk|para|джуз|chapter-part)"
+JUZ_NUM = re.compile(rf"{JUZ_WORD}\W{{0,3}}(\d+)|(\d+)\W{{0,3}}(?:\.|th|st|nd|rd)?\s*{JUZ_WORD}", re.I)
 ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 
 JUDGE_SCHEMA = {
@@ -40,7 +42,17 @@ def numbers_ok(sentence: str, cited_text: str, allowed: set[str]) -> bool:
     return all(n in pool for n in nums)
 
 
-def check(text: str, docs: dict[str, str], allowed_numbers: set[str], judge) -> tuple[str, list[str]]:
+def juz_ok(sentence: str, juz: int | None) -> bool:
+    """A number written next to "juz" (any of the visitor languages) must be the verse's juz."""
+    if juz is None:
+        return True
+    plain = CITE.sub("", sentence).translate(ARABIC_DIGITS)
+    return all(int(a or b) == juz for a, b in JUZ_NUM.findall(plain))
+
+
+def check(
+    text: str, docs: dict[str, str], allowed_numbers: set[str], judge, juz: int | None = None
+) -> tuple[str, list[str]]:
     """→ (checked text, events). `docs`: id → text; `judge(system, user, schema)` → dict, or None to skip layer 2."""
     sents = sentences(text)
     if not sents:
@@ -49,7 +61,7 @@ def check(text: str, docs: dict[str, str], allowed_numbers: set[str], judge) -> 
     events = []
     for i, s in enumerate(sents):
         cited = " ".join(docs.get(c, "") for c in CITE.findall(s))
-        if not numbers_ok(s, cited, allowed_numbers):
+        if not numbers_ok(s, cited, allowed_numbers) or not juz_ok(s, juz):
             keep[i] = False
             events.append(f"number_unsupported:{i}")
     if judge is not None:

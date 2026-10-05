@@ -14,6 +14,7 @@ Flow: router (level A–D, in scope?, language, Arabic search query) → grounde
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from functools import lru_cache
@@ -181,10 +182,16 @@ Documents:
 {doc_block}"""
 
 
-def _router(question: str, history: list[dict], llm) -> dict:
-    try:
-        r = llm.complete_json(ROUTER_SYSTEM, [{"role": "user", "content": question}], ROUTER_SCHEMA)
-    except Exception:  # noqa: BLE001 — fall back to safe defaults
+def _router(question: str, history: list[dict], *llms) -> dict:
+    """Classify with the first model that answers (a fast local model first when configured), else safe defaults."""
+    r = None
+    for llm in llms:
+        try:
+            r = llm.complete_json(ROUTER_SYSTEM, [{"role": "user", "content": question}], ROUTER_SCHEMA)
+            break
+        except Exception:  # noqa: BLE001 — try the next model, then fall back to safe defaults
+            continue
+    if r is None:
         r = {"level": "B", "in_scope": True, "language": languages.guess(question), "search_ar": question}
     r["language"] = languages.clean(r.get("language"), question)
     if FATWA_CUES.search(question):
@@ -235,7 +242,14 @@ def answer(
     check: bool = True,
 ) -> dict:
     llm = provider(provider_name)
-    route = _router(question, history, llm)
+    route_llms = [llm]
+    router_name = os.environ.get("ROUTER_PROVIDER", "local")
+    if router_name and router_name != llm.name:
+        try:
+            route_llms.insert(0, provider(router_name))  # the router is a short JSON task: a fast local model is enough
+        except Exception:  # noqa: BLE001
+            pass
+    route = _router(question, history, *route_llms)
     docs = documents(sura, aya_from, aya_to)
     query = route.get("search_ar") or ""
     if re.search(r"[؀-ۿ]", question):
@@ -289,7 +303,8 @@ def answer(
         def judge(system_: str, user: str, schema: dict) -> dict:
             return llm.complete_json(system_, [{"role": "user", "content": user}], schema)
 
-        text, events = verify.check(text, {d.id: d.text for d in docs}, allowed, judge)
+        juz = build_card(_store(), sura, aya_from, aya_to, "en")["juz"]
+        text, events = verify.check(text, {d.id: d.text for d in docs}, allowed, judge, juz)
         guard_events += events
     cited = sorted(set(re.findall(r"\[(D\d+)\]", text)), key=lambda s: int(s[1:]))
     if not cited and route["level"] != "D":

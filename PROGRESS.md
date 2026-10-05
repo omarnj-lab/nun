@@ -239,3 +239,21 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
 - **Chat in any language.** The router returns any ISO 639-1 code (sanitised; Urdu and Persian decided by their letters, since models call them "Arabic"); the answer, banner, not-found, out-of-scope, hadith and referral messages come back in that language (fixed texts for 11 languages in `nun/chat/languages.py`, English fallback). Outside Arabic/English the model must present the meaning as an explanation based on the approved English translation, not as an official translation, and says so.
 - **UI:** reply-language picker (Auto + 20 languages; Auto shows what was detected), language tag on each answer, banner in the visitor's language, 🔊 read-aloud of answers (browser speech synthesis; anything marked ﴿…﴾ or carrying Quranic diacritics is skipped, so no synthetic voice recites Quran), 🎤 voice input (browser speech recognition, where supported).
 - Browser test (`scripts/ops/ui_multilang.py`, via the public link): gallery click → 97:1; French, Urdu and Turkish questions answered in French / اردو / Türkçe; no page errors. 96 tests pass.
+
+## 2026-10-05 — Smoother UI, learning journey, understanding check, «بينات», answer checker, LLM choice
+- **Lag fixed.** Gallery fade mask on a moving layer, equaliser height and scan-line `top` animations repainted every frame; now compositor-only (transform/opacity), gallery pauses off-screen. Idle work ≈ 0 layouts / 3 s (`scripts/ops/ui_perf.py`). Server was already fast (scan 0.8 s).
+- **Continue the journey** (`nun/journey.py`, `/api/journey`): previous/next ayah verbatim + other collection panels of the same surah ("the next ayah, on another panel"), one tap scans it.
+- **Understanding check** (Track 03 criterion): guess the meaning *before* the translation is revealed (3 approved translations as options), then «اختبر فهمك» (meaning, surah, Meccan/Medinan; all from approved data). `/api/quiz/result` stores anonymous counts only (no id/IP, hour-rounded time) in git-ignored `data/quiz/`; `/api/quiz/stats` aggregates pre-guess vs post-quiz accuracy. Discovery passport in the visitor's browser only.
+- **Visuals:** "Why are we sure?" draws 48 verified point pairs between the collection panel and the visitor's photo (matcher returns them); "Where is it in the Quran?" shows 114 surahs (Meccan/Medinan, height ∝ ayahs) and 30 juz with this verse marked; live chat status (searching sources → writing → checking each sentence).
+- **«بينات» grounding** (package source, 263 questions; pypdf, fetched at build time, not committed): BM25 over question + similar phrasings + short answer, query from the router's Arabic search phrase. Hadith allowed only from a «بينات» document naming al-Bukhari/Muslim.
+- **Answer checker** (`nun/chat/verify.py`): numbers must appear in the cited documents; numbers next to "juz/cüz/الجزء/پارہ…" must equal the verse's juz; a judge call drops sentences the cited documents don't state. Visitors only see checked text.
+- **LLM choice** (`eval/chat_eval.py`, 28 questions: 12 verse, 12 official RULES §3.5, 4 trick/multilingual; rubric judge Claude — note self-grading bias for the Claude row):
+  | model | rubric | official | median s |
+  |---|---|---|---|
+  | claude-opus-5 | 94.6% (96.4% with low effort + local router) | 10/12 | 10.7 → 6.2–8.4 s live |
+  | TuwaiqAI-Instruct (local) | 78.6% | 8/12 | 2.7 |
+  | qwen3.6 (local) | 76.8% | 9/12 | 2.5 |
+  | gpt-oss:20b (local) | 26.8% | 2/12 | 8.2 |
+  → default `CHAT_PROVIDER=anthropic`, router on local qwen3.6 (`ROUTER_PROVIDER=local`), `ANSWER_EFFORT=low`. The UI no longer names or switches the model.
+- **Recognition comparison** prepared (`eval/recognition_compare.py`); KhaṭṭVision on the 195 internal images: 34.9% exact (Naskh 83%), answered 68%, precision 52%. External models wait for (a) an OpenAI key and (b) the team's OK to send the internal images to OpenAI/Anthropic (the script refuses without `--allow-external`).
+- Tests: 101 pass.

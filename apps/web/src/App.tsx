@@ -614,6 +614,29 @@ function Player({ card, onAyah }: { card: Card; onAyah: (aya: number | null) => 
   );
 }
 
+/** What the server is doing while the visitor waits (the pipeline's stages, paced to typical timings). */
+function ThinkingSteps() {
+  const t = useT();
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const a = window.setTimeout(() => setStep(1), 1200);
+    const b = window.setTimeout(() => setStep(2), 4800);
+    return () => {
+      window.clearTimeout(a);
+      window.clearTimeout(b);
+    };
+  }, []);
+  return (
+    <div className="bubble assistant thinking" aria-live="polite">
+      {(["think.sources", "think.writing", "think.checking"] as const).map((k, i) => (
+        <span key={k} className={i < step ? "done" : i === step ? "now" : ""}>
+          <i>{i < step ? "✓" : ""}</i>{t(k)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 type Msg = { role: "user" | "assistant"; text: string; reply?: ChatReply };
 
 function citeLabel(c: Citation, card: Card, t: ReturnType<typeof useT>): string {
@@ -821,7 +844,7 @@ function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) 
             </div>
           );
         })}
-        {busy && <div className="bubble assistant typing"><span /><span /><span /></div>}
+        {busy && <ThinkingSteps />}
         <div ref={end} />
       </div>
       <form className="ask" onSubmit={(e) => { e.preventDefault(); void send(input); }}>

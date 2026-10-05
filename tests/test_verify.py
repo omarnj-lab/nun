@@ -33,3 +33,12 @@ def test_judge_failure_keeps_number_layer():
 
     out, events = check("Juz 55 [D3]. Meccan [D3].", DOCS, set(), judge)
     assert out == "Meccan [D3]." and "judge_unavailable" in events
+
+
+def test_juz_numbers_must_match_the_verse():
+    from nun.chat.verify import juz_ok
+
+    assert juz_ok("It is in juz 30 [D3].", 30)
+    assert not juz_ok("Kur'an'ın 97. cüzünde yer alır [D3].", 30)  # 97 is the surah number, not the juz
+    assert not juz_ok("وهي في الجزء ٩٧ [D3].", 30)
+    assert juz_ok("Surah 97 is Meccan [D3].", 30)  # no juz word: nothing to check here
