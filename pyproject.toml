@@ -58,6 +58,7 @@ extend-exclude = ["training/reference", "eval/notebooks", "analysis"]
 
 [tool.ruff.lint.per-file-ignores]
 "nun/chat/languages.py" = ["E501"]  # translated message table
+"eval/chat_eval.py" = ["E501"]  # question table
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

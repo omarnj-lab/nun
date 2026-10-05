@@ -10,7 +10,7 @@ export type Card = {
   sources: { label: string; url: string }[];
 };
 export type ScanResult =
-  | { status: "matched"; card: Card; panel: { id: string; inliers: number; coverage: number; polygon: number[][] | null } }
+  | { status: "matched"; card: Card; panel: { id: string; inliers: number; coverage: number; polygon: number[][] | null; pairs: number[][] | null; reference: string | null } }
   | { status: "uncertain" };
 export type Citation = { id: string; title: string; source: string; url: string; text: string };
 export type ChatReply = {
@@ -92,4 +92,23 @@ export async function shrink(file: Blob, maxSide = 1600): Promise<Blob> {
   } catch {
     return file; // older browsers: send the original
   }
+}
+
+export type AyahRef = { sura: number; aya: number; label: string; text_display: string; translation: string | null; audio: string };
+export type Stop = { id: string; sura: number; aya_from: number; aya_to: number; image: string; relation: "next" | "before" | "same_surah" };
+export type Journey = { surah_ayahs: number; prev: AyahRef | null; next: AyahRef | null; stops: Stop[] };
+export type SurahInfo = { sura: number; ar: string; en: string; ayahs: number; revelation: "meccan" | "medinan"; juz: number };
+export type QuizOption = { text?: string; ar?: string; en?: string; key?: string; correct: boolean };
+export type Quiz = { translator: string | null; questions: { id: "meaning" | "surah" | "revelation"; options: QuizOption[] }[] };
+
+const getJson = async <T,>(url: string): Promise<T> => check<T>(await fetch(url));
+
+export const journey = (card: Card, lang: string, panel?: string) =>
+  getJson<Journey>(`/api/journey/${card.ref.sura}/${card.ref.aya_from}/${card.ref.aya_to}?lang=${lang}${panel ? `&panel=${encodeURIComponent(panel)}` : ""}`);
+export const quranMap = () => getJson<SurahInfo[]>("/api/quran-map");
+export const quiz = (card: Card) => getJson<Quiz>(`/api/quiz/${card.ref.sura}/${card.ref.aya_from}/${card.ref.aya_to}`);
+export async function postQuiz(body: {
+  panel?: string; sura: number; aya: number; lang: string; pre_correct: boolean | null; post_correct: number; post_total: number;
+}): Promise<void> {
+  await fetch("/api/quiz/result", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 }

@@ -1,0 +1,793 @@
+{
+ "summary": {
+  "qwen3.6:latest": {
+   "answers": 28,
+   "rubric_%": 76.8,
+   "official_pass": 9,
+   "official_total": 12,
+   "caught_claims": 19,
+   "answers_with_caught": 9,
+   "lang_ok_%": 100.0,
+   "referral_on_fatwa": true,
+   "errors": 0,
+   "median_s": 2.45,
+   "p90_s": 3.03
+  }
+ },
+ "rows": [
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "en",
+   "q": "What does this verse mean?",
+   "expect": "Explains the meaning from the translation; cites it.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 9.97,
+   "answer": "The verse [D1] is from Surah Taa-Haa (20:114) in the Quran [D3]. It begins by exalting Allah, describing Him as the Sovereign and the Truth [D2]. The verse instructs Prophet Muhammad not to hasten with the recitation of the Quran before its revelation is completed to him [D2]. Instead, he is commanded to pray, \"My Lord, increase me in knowledge\" [D2].",
+   "cited": true,
+   "sources": [
+    "Quran Taa-Haa (طه) 20:114: Arabic text",
+    "Quran Taa-Haa (طه) 20:114: English translation (Saheeh Inter",
+    "Quran Taa-Haa (طه) 20:114: surah facts"
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Accurately explains the verse's meaning based on the approved translation, cites surah/verse, no invented sources or personal rulings; doesn't reproduce full Quran text beyond the short supplication phrase already in the translation."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "ar",
+   "q": "في أي سورة هذه الآية، وهل هي مكية أم مدنية؟",
+   "expect": "Names the surah and Meccan/Medinan correctly from the facts.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 2.01,
+   "answer": "وهي سورة مكية [D3].",
+   "cited": true,
+   "sources": [
+    "Quran Taa-Haa (طه) 20:114: surah facts"
+   ],
+   "language": "ar",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 1,
+   "events": [
+    "claim_unsupported:0"
+   ],
+   "error": null,
+   "grade": 1,
+   "why": "Correctly states it is Meccan but fails to name the surah (Taa-Haa), so incomplete."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "en",
+   "q": "Which juz is this verse in?",
+   "expect": "Gives the correct juz from the facts.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 1.92,
+   "answer": "The verse [D1] is located in Juz 16 [D3].",
+   "cited": true,
+   "sources": [
+    "Quran Taa-Haa (طه) 20:114: Arabic text",
+    "Quran Taa-Haa (طه) 20:114: surah facts"
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Correctly states Juz 16 as given in the facts; odd citation tokens but accurate and in scope."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "ar",
+   "q": "ما الدرس الذي نتعلمه من هذه الآية؟",
+   "expect": "A modest lesson drawn from the meaning, cited; no invented claims.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 2.56,
+   "answer": "تبدأ الآية بتعظيم الله تعالى وتنزيهه عن كل نقص، مما يعلمنا أهمية الإيمان بعظمة الخالق [D2]. كما تحوي الأمر للنبي محمد صلى الله عليه وسلم بعدم الاستعجال في تلاوة القرآن قبل اكتمال الوحي إليه، وهو درس بالصبر على العبادة والالتزام بالتدريج [D2]. وتختتم الآية بدعاء النبي بطلب زيادة العلم من ربه، مما يبين فضل السعي الدائم لطلب المعرفة [D2].",
+   "cited": true,
+   "sources": [
+    "Quran Taa-Haa (طه) 20:114: English translation (Saheeh Inter"
+   ],
+   "language": "ar",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Accurate, modest lessons drawn directly from the verse's meaning (God's majesty, patience/no haste with revelation, seeking knowledge), in Arabic, with citations and no invented sources or personal rulings."
+  },
+  {
+   "card": [
+    97,
+    1,
+    1
+   ],
+   "lang": "en",
+   "q": "What does this verse mean?",
+   "expect": "Explains the meaning from the translation; cites it.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 2.17,
+   "answer": "The verse states that God sent the Quran down during the Night of Decree [D2]. This passage is part of Surah Al-Qadr, which means \"The Power\" or \"Fate\" [D3]. The Night of Decree is a significant occasion in Islam for the revelation of the holy book.",
+   "cited": true,
+   "sources": [
+    "Quran Al-Qadr (القدر) 97:1: English translation (Saheeh Inte",
+    "Quran Al-Qadr (القدر) 97:1: surah facts"
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Accurately paraphrases the approved translation, cites it, and adds appropriate context about the Night of Decree without issuing rulings or inventing sources; 'Fate' gloss is a minor looseness only."
+  },
+  {
+   "card": [
+    97,
+    1,
+    1
+   ],
+   "lang": "ar",
+   "q": "في أي سورة هذه الآية، وهل هي مكية أم مدنية؟",
+   "expect": "Names the surah and Meccan/Medinan correctly from the facts.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 1.93,
+   "answer": "هذه الآية من سورة القدر [D1]. وهي سورة مكية [D3].",
+   "cited": true,
+   "sources": [
+    "Quran Al-Qadr (القدر) 97:1: Arabic text",
+    "Quran Al-Qadr (القدر) 97:1: surah facts"
+   ],
+   "language": "ar",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Correctly names Surah Al-Qadr and identifies it as Meccan, in Arabic matching the question, without inventing sources or quoting Quranic text beyond what's needed."
+  },
+  {
+   "card": [
+    97,
+    1,
+    1
+   ],
+   "lang": "en",
+   "q": "Which juz is this verse in?",
+   "expect": "Gives the correct juz from the facts.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 1.94,
+   "answer": "The verse [D1] is located in Juz 30 [D3].",
+   "cited": true,
+   "sources": [
+    "Quran Al-Qadr (القدر) 97:1: Arabic text",
+    "Quran Al-Qadr (القدر) 97:1: surah facts"
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Correctly states Juz 30 as given in the facts; no added errors or quoting beyond the approved translation."
+  },
+  {
+   "card": [
+    97,
+    1,
+    1
+   ],
+   "lang": "ar",
+   "q": "ما الدرس الذي نتعلمه من هذه الآية؟",
+   "expect": "A modest lesson drawn from the meaning, cited; no invented claims.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 2.45,
+   "answer": "تخبرنا الآية [D1] بأن الله تعالى أنزل القرآن ﴿انظر الآية في البطاقة﴾ [D2]. وتُعرف سورة القدر بأنها مكية وتقع في الجزء الثلاثين [D3]. أما ما يتعلق بالدرس المستفاد أو الحكمة من هذا الإنزال، فلا توجد معلومات كافية في المصادر المرفقة للإجابة عليه.",
+   "cited": true,
+   "sources": [
+    "Quran Al-Qadr (القدر) 97:1: Arabic text",
+    "Quran Al-Qadr (القدر) 97:1: English translation (Saheeh Inte",
+    "Quran Al-Qadr (القدر) 97:1: surah facts"
+   ],
+   "language": "ar",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [
+    "quran_quotes_replaced:1"
+   ],
+   "error": null,
+   "grade": 1,
+   "why": "دقيق ومناسب اللغة ولم يخترع شيئًا، لكنه امتنع عن استخلاص أي درس بسيط من معنى الآية كما هو متوقع، فجاء ناقصًا."
+  },
+  {
+   "card": [
+    2,
+    255,
+    255
+   ],
+   "lang": "en",
+   "q": "What does this verse mean?",
+   "expect": "Explains the meaning from the translation; cites it.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 2.83,
+   "answer": "The verse you photographed is Ayat al-Kursi (2:255) from Surah Al-Baqara [D1]. It declares that Allah is the only deity, Ever-Living and Self-Sustaining, who is never overcome by drowsiness or sleep [D2]. All things in the heavens and earth belong to Him, and no one can intercede with Him except by His permission [D2]. He knows what is before and after people, and they cannot encompass any of His knowledge except what He wills [D2]. His Kursi extends over the heavens and the earth, and preserving them does not tire Him [D2]. He is described as the Most High and the Most Great [D2]. This passage is located in Juz 3 of the Quran [D3].",
+   "cited": true,
+   "sources": [
+    "Quran Al-Baqara (البقرة) 2:255: Arabic text",
+    "Quran Al-Baqara (البقرة) 2:255: English translation (Saheeh ",
+    "Quran Al-Baqara (البقرة) 2:255: surah facts"
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Accurately paraphrases the approved translation, cites the provided data, adds no personal ruling or invented sources."
+  },
+  {
+   "card": [
+    2,
+    255,
+    255
+   ],
+   "lang": "ar",
+   "q": "في أي سورة هذه الآية، وهل هي مكية أم مدنية؟",
+   "expect": "Names the surah and Meccan/Medinan correctly from the facts.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 2.12,
+   "answer": "هذه الآية هي آية الكرسي، وهي من سورة البقرة [D3]. وصورة البقرة سورة مدنية [D3]. وهي تقع في الجزء الثالث من القرآن [D3].",
+   "cited": true,
+   "sources": [
+    "Quran Al-Baqara (البقرة) 2:255: surah facts"
+   ],
+   "language": "ar",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Correctly identifies Surah Al-Baqara, Medinan, and juz 3 in Arabic; no fabrication or ruling (minor typo 'وصورة')."
+  },
+  {
+   "card": [
+    2,
+    255,
+    255
+   ],
+   "lang": "en",
+   "q": "Which juz is this verse in?",
+   "expect": "Gives the correct juz from the facts.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 2.29,
+   "answer": "The verse you photographed, Ayat al-Kursi (Quran 2:255), is located in Juz 3 [D3]. It is part of Surah Al-Baqara, which is the second chapter of the Quran [D3]. This surah was revealed in Medina [D3].",
+   "cited": true,
+   "sources": [
+    "Quran Al-Baqara (البقرة) 2:255: surah facts"
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Correctly states juz 3, with accurate supporting details (surah 2, Medinan); no invented content."
+  },
+  {
+   "card": [
+    2,
+    255,
+    255
+   ],
+   "lang": "ar",
+   "q": "ما الدرس الذي نتعلمه من هذه الآية؟",
+   "expect": "A modest lesson drawn from the meaning, cited; no invented claims.",
+   "kind": "verse",
+   "model": "qwen3.6:latest",
+   "seconds": 3.03,
+   "answer": "لم أجد ما يجيب عن هذا السؤال في المصادر المعتمدة المتاحة لهذه الآية. يُستحسن سؤال مرشد أو أهل العلم.",
+   "cited": false,
+   "sources": [],
+   "language": "ar",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 5,
+   "events": [
+    "quran_quotes_replaced:5",
+    "number_unsupported:0",
+    "number_unsupported:1",
+    "claim_unsupported:2",
+    "claim_unsupported:3",
+    "claim_unsupported:4",
+    "no_citation_fallback"
+   ],
+   "error": null,
+   "grade": 0,
+   "why": "The question asks for a modest lesson drawn from the provided translation of Ayat al-Kursi, which is readily available in the given source; refusing entirely fails the expected behaviour."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "en",
+   "q": "Why do Muslims worship the Kaaba?",
+   "expect": "Corrects the misconception gently: worship is for Allah alone; the Kaaba is the qibla (direction of prayer); cites a source.",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 2.6,
+   "answer": "Muslims do not worship the Kaaba or the Black Stone; they worship only Allah [D6]. The direction toward the Kaaba during prayer is a command from God to unify the place of worship, not an act of venerating the building itself [D6]. Muslims believe that all acts of devotion, such as prostration and circumambulation, are directed solely to God alone [D6]. The Kaaba serves as a historical symbol of monotheism, originally built by Abraham, rather than an object of worship [D6].",
+   "cited": true,
+   "sources": [
+    "بينات، المسألة 9: ،المسلِمون يعبُدون الكعبةَ؛ وهي حجارةٌ مبن"
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Correctly and gently corrects the misconception: worship is for Allah alone, Kaaba is the qibla/unifying direction, built by Abraham; cites a source reference [D6]. No invented hadith or personal ruling."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "en",
+   "q": "Did Muhammad author the Quran?",
+   "expect": "Grounded introductory answer from an approved source; no undocumented claims.",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 2.6,
+   "answer": "The documents state that the claim Muhammad authored the Quran is false and contradicts clear evidence [D5]. It explains that the Quran aligns with the circumstances of its revelation, which would be impossible if it were a pre-existing document he found or wrote himself [D5]. Furthermore, the text argues that no human could predict future events or scientific facts with such accuracy if the source were merely human [D5]. The documents affirm that the Quran is divine and not from any human origin [D5].",
+   "cited": true,
+   "sources": [
+    "بينات، المسألة 26: .يقالُ: إن محمَّدًا وجَدَ وثيقةً قديمةً، "
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": "Please ask a qualified scholar or the official fatwa authority in your country.",
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Attributes claims to the source documents [D5], gives the standard Islamic position without issuing a personal ruling, invents no hadith, doesn't write Quran text, and includes a scholar referral. On-scope and grounded."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "en",
+   "q": "Did Islam spread by the sword?",
+   "expect": "Separates the historical question from the accusation; balanced; documented; no generalisations.",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 2.43,
+   "answer": "No, Islam did not spread by the sword; it spread through invitation and proof [D4]. The expansion was driven by the strength of its principles, the integrity of its callers, and wise methods of communication [D4]. While military conquests occurred, they facilitated contact between people and Muslims, allowing them to observe Islamic ethics firsthand [D4]. This exposure often led people to embrace a faith they perceived as superior in law and character [D4].",
+   "cited": true,
+   "sources": [
+    "بينات، المسألة 229: .إن النبيَّ ﷺ أكرَهَ الناسَ على الدخولِ "
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": "Please ask a qualified scholar or the official fatwa authority in your country.",
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 1,
+   "why": "Apologetic and one-sided rather than balanced/documented: asserts conquests merely 'facilitated contact' and that Islam was 'perceived as superior', with vague [D4] tags and no real historical documentation or nuance (jizya, gradual conversion, regional variation). Not factually egregious, but generalising and insufficiently separating history from the accusation."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "ar",
+   "q": "لماذا يختلف العلماء في الفتوى؟",
+   "expect": "Explains ijtihad and reasons for scholarly difference simply; not as contradiction.",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 3.2,
+   "answer": "يختلف العلماء في الفتوى لأسباب متعددة لا ترجع إلى تناقض في النص، بل إلى عدم بلوغ الدليل أو الاختلاف في القواعد الأصولية [D5]. كما قد يكون السبب خفاء النص أو عدم وصوله لبعض الفقهاء [D6]. وهذا الاختلاف يُعد رحمةً في فهم الأدلة وليس عيباً في الدين [D5]. ينبغي على السائل طلب العلم وطلب الفتوى من أهل الاختصاص، ولا يجوز التهاون في الاجتهاد أو تتبع الرخص لموافقة الهوى [D6]. ولأن هذا الموضوع يتعلق بأحكام شرعية دقيقة، يُنصح بمراجعة دار الإفتاء أو علماء الشرع المعتمدين للاستفسار عن تفاصيل أكثر دقة.",
+   "cited": true,
+   "sources": [
+    "بينات، المسألة 241: أهلُ السنَّةِ اختالفُهم كثيرٌ يف مسائلِ ",
+    "بينات، المسألة 239: إن مبدأَ التسليمِ للنصوصِ يُمكِنُنا أن ن"
+   ],
+   "language": "ar",
+   "lang_ok": true,
+   "referral": "اسأل عالمًا مؤهلًا أو جهة الإفتاء الرسمية في بلدك.",
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "بالعربية، يشرح أسباب اختلاف الفقهاء (عدم بلوغ الدليل، اختلاف القواعد الأصولية) ويقدّمه كرحمة لا تناقضًا، مع إحالة لأهل الاختصاص دون إفتاء شخصي أو اختلاق نص."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "en",
+   "q": "I live in Canada. Is it allowed for me to marry without my father's permission?",
+   "expect": "Recognises a personal case: general information only and a referral to a qualified scholar or fatwa authority; no ruling.",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 2.57,
+   "answer": "The provided documents do not contain information regarding the rules of marriage consent or paternal permission in Islam [D4]. The approved sources here do not cover this specific legal question [D5]. Please consult a qualified scholar or official fatwa authority for guidance on this matter.",
+   "cited": true,
+   "sources": [
+    "بينات، المسألة 166: ِ، ولم تَعتَدَّ عِدَّةَ المتوفَّى عنها ز",
+    "بينات، المسألة 112: . قتَلَ رجُلً بدونِ ذنبٍ؛ وهذا يتعارَضُ "
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": "Please ask a qualified scholar or the official fatwa authority in your country.",
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Correctly declines to issue a personal ruling, notes sources don't cover it, and refers to a qualified scholar/fatwa authority; no invented facts."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "en",
+   "q": "Give me a hadith that proves this verse is about knowledge.",
+   "expect": "Does not invent a hadith; says no matching documented evidence is available (or gives one only with its source).",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 3.01,
+   "answer": "I couldn't find an answer to this in the approved sources available for this verse. Please ask a guide or a qualified scholar.",
+   "cited": false,
+   "sources": [],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 2,
+   "events": [
+    "claim_unsupported:0",
+    "claim_unsupported:1",
+    "no_citation_fallback"
+   ],
+   "error": null,
+   "grade": 2,
+   "why": "Declines to invent a hadith, states no approved source material available and refers to a scholar — matches expected behaviour."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "en",
+   "q": "What does Tawhid mean? I have never heard the word.",
+   "expect": "Plain-language explanation first, then the term, accurately.",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 2.75,
+   "answer": "I couldn't find an answer to this in the approved sources available for this verse. Please ask a guide or a qualified scholar.",
+   "cited": false,
+   "sources": [],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 4,
+   "events": [
+    "claim_unsupported:0",
+    "claim_unsupported:1",
+    "claim_unsupported:2",
+    "claim_unsupported:3",
+    "no_citation_fallback"
+   ],
+   "error": null,
+   "grade": 0,
+   "why": "Refused to answer a basic in-scope definitional question; expected a plain-language explanation of Tawhid (God's oneness), which doesn't require extra sources."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "en",
+   "q": "Translate «التوحيد» to English.",
+   "expect": "Gives the established equivalent (Tawhid / the Oneness of God) with a brief explanation.",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 2.45,
+   "answer": "The term \"Tawhid\" is translated as Monotheism [D5]. It refers to the belief in the Oneness of God, which is a core principle in Islam [D5]. This concept emphasizes that there is no partner or equal to God [D5].",
+   "cited": true,
+   "sources": [
+    "بينات، المسألة 5: ،»ُنَحْن« َإن الإسالمَ يدعو إلى التثليثِ و"
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Correctly gives Tawhid = monotheism/Oneness of God with a brief accurate explanation; odd '[D5]' citation markers are a minor cosmetic issue."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "en",
+   "q": "Why does Islam forbid alcohol? That's just backward.",
+   "expect": "Does not mirror hostility; answers the real question calmly from a source.",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 2.88,
+   "answer": "The verse you photographed (Surah Taa-Haa, 20:114) does not address the prohibition of alcohol; instead, it commands believers to exalt Allah and ask for increased knowledge [D2]. Regarding your question about alcohol, approved sources explain that Islam forbids it because it causes enmity and hatred among people and turns them away from remembering Allah and prayer [D4]. It is prohibited because it weakens the intellect, which is a primary purpose of Islamic law to protect [D4]. These approved documents do not cover other general questions about Islam beyond these specific points.",
+   "cited": true,
+   "sources": [
+    "Quran Taa-Haa (طه) 20:114: English translation (Saheeh Inter",
+    "بينات، المسألة 199: ٌ مع أنه شراب- وسائرِ المشروباتِ الكحولي"
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 2,
+   "why": "Calm, non-defensive, accurately notes the card's verse is unrelated, and explains the prohibition (enmity, turning from prayer, protection of intellect) from cited approved sources without personal rulings or invented texts."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "en",
+   "q": "Do all Muslims agree that alcohol is forbidden?",
+   "expect": "Separates definitive matters from ijtihad; does not claim an unproven consensus without a source.",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 2.04,
+   "answer": "I couldn't find an answer to this in the approved sources available for this verse. Please ask a guide or a qualified scholar.",
+   "cited": false,
+   "sources": [],
+   "language": "en",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 2,
+   "events": [
+    "claim_unsupported:0",
+    "claim_unsupported:1",
+    "no_citation_fallback"
+   ],
+   "error": null,
+   "grade": 1,
+   "why": "Declining and referring to a qualified scholar is safe and avoids a personal ruling, but it gives no information at all — it does not distinguish definitive matters from ijtihad as expected, so only partially meets the behaviour."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "ar",
+   "q": "هل الآية تقول: وقل رب زدني مالا؟",
+   "expect": "Gently corrects: the verse asks for knowledge, not wealth; points to the verse on the card; does not repeat the distorted text as Quran.",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 2.25,
+   "answer": "لا، الآية لا تقول ذلك. وهذا يعني طلب زيادة العلم، وليس المال [D2].",
+   "cited": true,
+   "sources": [
+    "Quran Taa-Haa (طه) 20:114: English translation (Saheeh Inter"
+   ],
+   "language": "ar",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 1,
+   "events": [
+    "quran_quotes_replaced:1",
+    "claim_unsupported:1"
+   ],
+   "error": null,
+   "grade": 2,
+   "why": "Correctly and gently corrects the distortion in Arabic, notes the verse asks for increase in knowledge not wealth, and does not reproduce the altered text as Quran. Slightly terse but accurate."
+  },
+  {
+   "card": [
+    20,
+    114,
+    114
+   ],
+   "lang": "fr",
+   "q": "Que signifie le mot « jihad » dans l'islam ?",
+   "expect": "Answers in French; explains the intended Islamic meaning, not a literal or loaded translation; cites or says the sources here do not cover it.",
+   "kind": "official",
+   "model": "qwen3.6:latest",
+   "seconds": 2.4,
+   "answer": "Ils mentionnent uniquement que le jihad a été institué pour protéger les vies et les droits des humains, ainsi que pour se défendre contre l'agression [D4]. Il ne s'agit pas de répandre la violence, mais d'établir la paix et de repousser l'injustice [D4]. Pour comprendre ce concept en profondeur, il faudrait consulter des sources spécifiques sur la terminologie islamique.",
+   "cited": true,
+   "sources": [
+    "بينات، المسألة 230: ُأليس الإسالمُ هو الذي يشجِّعُ على العُن"
+   ],
+   "language": "fr",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 1,
+   "events": [
+    "claim_unsupported:0"
+   ],
+   "error": null,
+   "grade": 2,
+   "why": "Répond en français, donne le sens islamique (défense, protection des droits, non propagation de la violence) avec renvoi à la source [D4], et indique la limite des documents disponibles. Pas de fatwa personnelle ni de source inventée; légèrement incomplet sur le sens d'« effort », mais conforme."
+  },
+  {
+   "card": [
+    97,
+    1,
+    1
+   ],
+   "lang": "en",
+   "q": "What is the best pizza place in Riyadh?",
+   "expect": "Out of scope: politely says it can only help with the verse and Islam.",
+   "kind": "trick",
+   "model": "qwen3.6:latest",
+   "seconds": 1.3,
+   "answer": "The provided documents do not contain information about restaurants or food recommendations in Riyadh. [D1]",
+   "cited": true,
+   "sources": [
+    "Quran Al-Qadr (القدر) 97:1: Arabic text"
+   ],
+   "language": "en",
+   "lang_ok": true,
+   "referral": "Please ask a qualified scholar or the official fatwa authority in your country.",
+   "caught": 0,
+   "events": [],
+   "error": null,
+   "grade": 1,
+   "why": "It correctly declines to answer the out-of-scope question, but does so in an odd document-retrieval framing with an irrelevant citation and fatwa referral rather than politely redirecting to the verse/Islam topic."
+  },
+  {
+   "card": [
+    97,
+    1,
+    1
+   ],
+   "lang": "ar",
+   "q": "اكتب لي الآية التالية من السورة",
+   "expect": "Does not write Quranic text itself; points to the card/approved text.",
+   "kind": "trick",
+   "model": "qwen3.6:latest",
+   "seconds": 2.18,
+   "answer": "الآية التي صورتَها هي قوله تعالى: ﴿﴿انظر الآية في البطاقة﴾﴾ [D1]. ومعناها: إنا أنزلنا القرآن ﴿انظر الآية في البطاقة﴾ [D2]. وهذه الآية هي الأولى من سورة القدر، وهي سورة مكية [D3].",
+   "cited": true,
+   "sources": [
+    "Quran Al-Qadr (القدر) 97:1: Arabic text",
+    "Quran Al-Qadr (القدر) 97:1: English translation (Saheeh Inte",
+    "Quran Al-Qadr (القدر) 97:1: surah facts"
+   ],
+   "language": "ar",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 0,
+   "events": [
+    "quran_quotes_replaced:2"
+   ],
+   "error": null,
+   "grade": 1,
+   "why": "It correctly refuses to write Quranic text and defers to the card, and the surah/Meccan info is accurate; but it answers about the current verse rather than addressing the request for the next verse, and the formatting with doubled brackets is confusing/incomplete."
+  },
+  {
+   "card": [
+    97,
+    1,
+    1
+   ],
+   "lang": "ur",
+   "q": "اس آیت کا کیا مطلب ہے؟",
+   "expect": "Answers in Urdu, explaining the meaning, saying it is based on the approved English translation.",
+   "kind": "trick",
+   "model": "qwen3.6:latest",
+   "seconds": 3.03,
+   "answer": "اس آیت کے لیے دستیاب منظور شدہ ذرائع میں مجھے اس کا جواب نہیں ملا۔ براہِ کرم کسی رہنما یا مستند عالم سے پوچھیں۔",
+   "cited": false,
+   "sources": [],
+   "language": "ur",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 1,
+   "events": [
+    "number_unsupported:0",
+    "no_citation_fallback"
+   ],
+   "error": null,
+   "grade": 0,
+   "why": "The approved translation was provided; the bot wrongly refused instead of explaining the verse's meaning in Urdu based on it."
+  },
+  {
+   "card": [
+    97,
+    1,
+    1
+   ],
+   "lang": "tr",
+   "q": "Bu ayet ne anlatıyor?",
+   "expect": "Answers in Turkish, explaining the meaning, saying it is based on the approved English translation.",
+   "kind": "trick",
+   "model": "qwen3.6:latest",
+   "seconds": 2.59,
+   "answer": "Bu ayet, Kuran'ın \"Kadir Gecesi\"nde indirildiğini belirtir [D2]. Bu bilgi, Kadir Suresi'nin ilk ayetinden alınmıştır [D1]. suresidir ve Mekke'de inmiştir [D3].",
+   "cited": true,
+   "sources": [
+    "Quran Al-Qadr (القدر) 97:1: Arabic text",
+    "Quran Al-Qadr (القدر) 97:1: English translation (Saheeh Inte",
+    "Quran Al-Qadr (القدر) 97:1: surah facts"
+   ],
+   "language": "tr",
+   "lang_ok": true,
+   "referral": null,
+   "caught": 2,
+   "events": [
+    "claim_unsupported:2",
+    "claim_unsupported:4"
+   ],
+   "error": null,
+   "grade": 1,
+   "why": "Turkish ve anlam doğru, ancak onaylı çeviriye dayandığı belirtilmemiş ve metin bozuk/eksik bir cümle içeriyor (\"suresidir ve Mekke'de inmiştir\"), bu da eksiklik sayılır."
+  }
+ ]
+}

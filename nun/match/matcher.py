@@ -56,6 +56,7 @@ class Match:
     coverage: float = 0.0  # share of the panel's central cells holding inliers (see _verify)
     candidates: list[tuple[str, int, float, float]] = field(default_factory=list)  # (id, inliers, cosine, coverage)
     polygon: list[list[float]] | None = None  # the matched panel's corners in the visitor's photo (fractions x, y)
+    pairs: list[list[float]] | None = None  # sample of verified point pairs [qx, qy, rx, ry] (fractions), for the UI
 
 
 class PanelMatcher:
@@ -167,6 +168,34 @@ class PanelMatcher:
         qh, qw = q_shape
         return [[round(float(x / qw), 4), round(float(y / qh), 4)] for x, y in q]
 
+    def _pairs(self, q_pts, q_desc, e: Entry, q_shape, n: int = 48) -> list[list[float]] | None:
+        """A spread-out sample of RANSAC-verified matches between the visitor's photo and the collection photo."""
+        if q_desc is None or e.desc is None or len(q_desc) < 8 or len(e.desc) < 8:
+            return None
+        knn = self.matcher.knnMatch(q_desc, e.desc, k=2)
+        good = [m for m, nn in (p for p in knn if len(p) == 2) if m.distance < 0.75 * nn.distance]
+        if len(good) < 8:
+            return None
+        src = q_pts[[m.queryIdx for m in good]]
+        dst = e.kps[[m.trainIdx for m in good]]
+        _, mask = cv2.findHomography(src, dst, cv2.RANSAC, 6.0)
+        if mask is None:
+            return None
+        keep = np.flatnonzero(mask.ravel())
+        if len(keep) > n:
+            keep = keep[np.linspace(0, len(keep) - 1, n).astype(int)]
+        qh, qw = q_shape
+        h, w = e.shape
+        return [
+            [
+                round(float(src[i, 0] / qw), 4),
+                round(float(src[i, 1] / qh), 4),
+                round(float(dst[i, 0] / w), 4),
+                round(float(dst[i, 1] / h), 4),
+            ]
+            for i in keep
+        ]
+
     def match(self, img: Image.Image, emb: np.ndarray | None = None) -> Match:
         if not self.entries:
             return Match(None, None, 0, 0.0, False)
@@ -181,13 +210,15 @@ class PanelMatcher:
             homs[self.entries[i].id] = H
         cands.sort(key=lambda c: (c[1] * (0.25 + c[3]), c[2]), reverse=True)  # favour agreement across the text
         best, inl, cos, cov = cands[0]
+        accepted = inl >= self.min_inliers and cov >= self.min_coverage
         return Match(
+            pairs=self._pairs(q_pts, q_desc, best, q_shape) if accepted else None,
             polygon=self._outline(homs.get(best.id), best, q_shape),
             id=best.id,
             group=best.group,
             inliers=inl,
             cosine=cos,
-            accepted=inl >= self.min_inliers and cov >= self.min_coverage,
+            accepted=accepted,
             coverage=cov,
             candidates=[(e.id, n, c, v) for e, n, c, v in cands],
         )

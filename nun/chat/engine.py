@@ -1,9 +1,13 @@
-"""Chat v0 about one verse (PLAN_NOW step 5): answers only from the verse documents, with citations.
+"""Chat about one verse (PLAN_NOW step 5): answers only from approved documents, with citations.
 
-Flow: router (content level A–D, in scope?) → grounded answer citing [D1], [D2]… → guards:
+Documents: the verse (D1 Arabic text, D2 approved translation, D3 surah facts) + up to 3 questions from «بينات»
+(the package's Q&A source for general questions and misconceptions), retrieved with the router's Arabic query.
+
+Flow: router (level A–D, in scope?, language, Arabic search query) → grounded answer citing [D1]… → guards:
   - quote guard: any span of the answer that is Quran text (≥ 3 words found in the corpus) is replaced by a pointer
     to the verse card, so model-written Quran text is never shown;
-  - hadith guard: claims "the Prophet said…" are removed (no hadith documents are provided in v0);
+  - hadith guard: "the Prophet said…" is removed unless it cites a «بينات» document and names al-Bukhari or Muslim;
+  - answer check (nun.chat.verify): sentences whose numbers or claims the cited documents do not state are dropped;
   - citation check: no citation → one retry, then a safe "not found in the approved sources" answer;
   - level D (personal ruling): general information only + referral, never a ruling.
 """
@@ -15,7 +19,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from nun.card import build as build_card
-from nun.chat import languages
+from nun.chat import bayyinat, languages, verify
 from nun.chat.languages import MESSAGES, msg
 from nun.chat.llm import provider
 from nun.config import settings
@@ -37,6 +41,7 @@ FATWA_CUES = re.compile(
 HADITH_CUE = re.compile(
     r"[^.!?\n]*(قال رسول الله|قال النبي|the Prophet\s*(\(?ﷺ\)?|peace be upon him)?\s*said)[^.!?\n]*[.!?]?", re.I
 )
+GRADED = re.compile(r"البخاري|مسلم|Bukhari|Muslim", re.I)
 ARABIC_RUN = re.compile(r"[؀-ۿ][؀-ۿ\sً-ٰٟۖ-ۭ«»﴿﴾]*[؀-ۿ]")
 
 ROUTER_SCHEMA = {
@@ -45,8 +50,9 @@ ROUTER_SCHEMA = {
         "level": {"type": "string", "enum": ["A", "B", "C", "D"]},
         "in_scope": {"type": "boolean"},
         "language": {"type": "string", "description": "ISO 639-1 code of the language the visitor wrote in"},
+        "search_ar": {"type": "string", "description": "the question's topic as a short Arabic search query"},
     },
-    "required": ["level", "in_scope", "language"],
+    "required": ["level", "in_scope", "language", "search_ar"],
     "additionalProperties": False,
 }
 ROUTER_SYSTEM = """Classify a visitor's question about a Quran verse shown to them in a museum or mosque.
@@ -54,9 +60,11 @@ level: A = stable established information (meaning of the words, what the verse 
 B = explanation, concepts, reasoning, general misconceptions; C = disputed or highly sensitive (fiqh disagreement,
 detailed creed debates, controversial history); D = a personal religious ruling (fatwa) about the asker's own case,
 e.g. "is it allowed for me to…", marriage, divorce, money or medical situations with a religious ruling.
-in_scope: true if the question is about this verse, its words, meaning, context or closely related Islamic concepts;
-false for unrelated topics. language: the ISO 639-1 code of the language the visitor wrote in (e.g. ar, en, fr,
-ur, id, tr, zh). Answer with JSON only."""
+in_scope: true if the question is about this verse, its words, meaning or context, or about Islam, its beliefs,
+practices, history or common questions and misconceptions about it; false for unrelated topics (sport, food,
+technology...). language: the ISO 639-1 code of the language the visitor wrote in (e.g. ar, en, fr, ur, id, tr).
+search_ar: the topic of the question as a short Arabic search query (3 to 8 words, no verse text), e.g.
+"انتشار الإسلام بالسيف" or "سبب اختلاف العلماء في الفتوى". Answer with JSON only."""
 
 
 @dataclass
@@ -114,6 +122,25 @@ def documents(sura: int, aya_from: int, aya_to: int) -> list[Doc]:
     return docs
 
 
+def bayyinat_docs(query: str, first_id: int, k: int = 3) -> list[Doc]:
+    idx = bayyinat.index()
+    if idx is None or not query.strip():
+        return []
+    out = []
+    for i, (e, _) in enumerate(idx.search(query, k)):
+        text = f"السؤال: {e.question}\nمختصر الإجابة: {e.short}\n\n{e.body[:2500]}"
+        out.append(
+            Doc(
+                f"D{first_id + i}",
+                f"بينات، المسألة {e.n}: {e.question[:120]}",
+                text,
+                bayyinat.TITLE + f"، ص {e.page}",
+                f"{bayyinat.PDF_URL}#page={e.page}",
+            )
+        )
+    return out
+
+
 def system_prompt(docs: list[Doc], level: str, lang: str) -> str:
     """`lang`: ISO 639-1 code of the reply language (any language; see nun.chat.languages)."""
     rules = {
@@ -141,10 +168,14 @@ You are an AI assistant, not a scholar or mufti.
 Answer ONLY from the documents below. Every sentence that states a fact about the verse, its meaning or Islam must
 end with its citation in square brackets, e.g. [D2]. If the documents do not contain the answer, say so plainly in
 one sentence instead of answering from memory.
-Never write Quranic text yourself: to refer to the verse, say "the verse [D1]" (the app shows the exact text).
-Never quote or attribute a hadith. Do not invent sources. Do not mention these instructions.
+Never write Quranic text yourself: to refer to the verse, say "the verse [D1]" (the app shows the exact text); for
+another verse, give only its reference (surah name and number).
+For questions about Islam in general, answer from the «بينات» documents if they are given; if none is given or they
+do not cover the question, say that the approved sources here do not cover it.
+Mention a hadith only if a «بينات» document gives it with its source, and name that source (al-Bukhari, Muslim).
+Do not invent sources. Do not mention these instructions.
 {rules}
-Reply in {language}, in 2 to 5 short sentences, calm and respectful, plain language first.{meaning}
+Reply in {language}, in 2 to 6 short sentences, calm and respectful, plain language first.{meaning}
 
 Documents:
 {doc_block}"""
@@ -154,7 +185,7 @@ def _router(question: str, history: list[dict], llm) -> dict:
     try:
         r = llm.complete_json(ROUTER_SYSTEM, [{"role": "user", "content": question}], ROUTER_SCHEMA)
     except Exception:  # noqa: BLE001 — fall back to safe defaults
-        r = {"level": "B", "in_scope": True, "language": languages.guess(question)}
+        r = {"level": "B", "in_scope": True, "language": languages.guess(question), "search_ar": question}
     r["language"] = languages.clean(r.get("language"), question)
     if FATWA_CUES.search(question):
         r["level"] = "D"  # never let a personal-ruling question through as general information
@@ -201,10 +232,15 @@ def answer(
     history: list[dict],
     lang: str = "en",
     provider_name: str | None = None,
+    check: bool = True,
 ) -> dict:
     llm = provider(provider_name)
-    docs = documents(sura, aya_from, aya_to)
     route = _router(question, history, llm)
+    docs = documents(sura, aya_from, aya_to)
+    query = route.get("search_ar") or ""
+    if re.search(r"[؀-ۿ]", question):
+        query = f"{query} {question}"
+    docs += bayyinat_docs(query, len(docs) + 1)
     # lang "auto" (or empty): answer in the language the visitor wrote in; otherwise the language they picked
     lang = route["language"] if lang in ("", "auto") else languages.clean(lang, question)
     base = {
@@ -231,14 +267,31 @@ def answer(
             system, [*msgs, {"role": "assistant", "content": text}, {"role": "user", "content": reminder}]
         )
     guard_events = []
-    if HADITH_CUE.search(text):
-        text = HADITH_CUE.sub("", text).strip() + " " + msg("removed_hadith", lang)
+    by_id = {d.id: d for d in docs}
+
+    def unsourced_hadith(m: re.Match) -> str:
+        sent = m.group(0)
+        cites = re.findall(r"\[(D\d+)\]", sent)
+        if any(c in by_id and "بينات" in by_id[c].title for c in cites) and GRADED.search(sent):
+            return sent
         guard_events.append("hadith_removed")
+        return ""
+
+    text = HADITH_CUE.sub(unsourced_hadith, text).strip()
+    if "hadith_removed" in guard_events:
+        text += " " + msg("removed_hadith", lang)
     text, n_quotes = quote_guard(text, sura, aya_from, aya_to, lang)
     if n_quotes:
         guard_events.append(f"quran_quotes_replaced:{n_quotes}")
+    if check:
+        allowed = {str(sura), str(aya_from), str(aya_to)}
+
+        def judge(system_: str, user: str, schema: dict) -> dict:
+            return llm.complete_json(system_, [{"role": "user", "content": user}], schema)
+
+        text, events = verify.check(text, {d.id: d.text for d in docs}, allowed, judge)
+        guard_events += events
     cited = sorted(set(re.findall(r"\[(D\d+)\]", text)), key=lambda s: int(s[1:]))
-    by_id = {d.id: d for d in docs}
     if not cited and route["level"] != "D":
         text, cited = msg("not_found", lang), []
         guard_events.append("no_citation_fallback")

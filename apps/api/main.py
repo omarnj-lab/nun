@@ -37,6 +37,7 @@ load_dotenv()
 Image.MAX_IMAGE_PIXELS = 80_000_000
 MAX_UPLOAD = 15 * 1024 * 1024
 WEB_DIST = Path("apps/web/dist")
+WEB_PUBLIC = Path("apps/web/public")
 ADMIN_HTML = Path(__file__).parent / "admin.html"
 STARTED = time.time()
 
@@ -86,7 +87,7 @@ def rebuild_matcher() -> None:
 
 # ---- rate limiting (per client IP, sliding window) ----
 _hits: dict[tuple[str, str], deque] = defaultdict(deque)
-LIMITS = {"scan": (20, 60), "chat": (12, 60), "regions": (12, 60)}  # (requests, seconds)
+LIMITS = {"scan": (20, 60), "chat": (12, 60), "regions": (12, 60), "quiz": (20, 60)}  # (requests, seconds)
 
 
 def client_ip(request: Request) -> str:
@@ -156,6 +157,10 @@ async def scan(request: Request, image: UploadFile = File(...), lang: str = Form
             "inliers": res.inliers,
             "coverage": round(res.coverage, 2),
             "polygon": res.polygon,  # the panel boundary in the visitor's photo (fractions)
+            "pairs": res.pairs,  # verified point pairs, photo ↔ reference (fractions), for "why we're sure"
+            "reference": f"/panels/{panel['id']}.jpg"
+            if (WEB_PUBLIC / "panels" / f"{panel['id']}.jpg").exists()
+            else None,
         },
         "card": card,
         "timings_ms": {"match": elapsed},
@@ -200,6 +205,60 @@ async def regions(
         "regions": regions_for_card(out, card["ayahs"]),
         "seconds": out.get("seconds"),
     }
+
+
+@app.get("/api/journey/{sura}/{aya_from}/{aya_to}")
+def journey_view(sura: int, aya_from: int, aya_to: int, lang: str = "en", panel: str | None = None) -> dict:
+    from nun import journey
+
+    try:
+        return journey.journey(store, sura, aya_from, aya_to, "en" if lang != "ar" else "ar", panel)
+    except KeyError:
+        raise HTTPException(404, "No such verse") from None
+
+
+@app.get("/api/quran-map")
+def quran_map() -> list[dict]:
+    from nun import journey
+
+    return journey.quran_map()
+
+
+@app.get("/api/quiz/{sura}/{aya_from}/{aya_to}")
+def quiz(sura: int, aya_from: int, aya_to: int) -> dict:
+    from nun import journey
+
+    try:
+        return journey.quiz(store, sura, aya_from, aya_to)
+    except KeyError:
+        raise HTTPException(404, "No such verse") from None
+
+
+class QuizResult(BaseModel):
+    panel: str | None = Field(None, max_length=64)
+    sura: int = Field(ge=1, le=114)
+    aya: int = Field(ge=1, le=286)
+    lang: str = Field("ar", max_length=5)
+    pre_correct: bool | None = None
+    post_correct: int = Field(ge=0, le=10)
+    post_total: int = Field(ge=0, le=10)
+
+
+@app.post("/api/quiz/result")
+def quiz_result(request: Request, body: QuizResult) -> dict:
+    """Anonymous understanding check (Track 03 success criterion): counts only, no identifiers."""
+    from nun import journey
+
+    rate_limit(request, "quiz")
+    journey.record(body.panel, body.sura, body.aya, body.lang, body.pre_correct, body.post_correct, body.post_total)
+    return {"ok": True}
+
+
+@app.get("/api/quiz/stats")
+def quiz_stats() -> dict:
+    from nun import journey
+
+    return journey.stats()
 
 
 @app.get("/api/verse/{sura}/{aya}")

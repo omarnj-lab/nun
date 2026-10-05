@@ -1,8 +1,40 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { ask, regions, scan, shrink, type Card, type ChatReply, type Citation, type Region, type Regions, type Turn } from "./api";
+import { ask, regions, scan, shrink, type Card, type ChatReply, type Citation, type Quiz, type Region, type Regions, type Turn } from "./api";
 import { I18nContext, arabicDigits, dirOf, useT, type Key, type Lang } from "./i18n";
+import { JourneyView, Passport, PreGuess, QuizView, QuranMap, WhySure, getQuiz, stamp } from "./Journey";
 
-type Matched = { photo: string; upload: Blob; card: Card; polygon: number[][] | null };
+type Matched = {
+  photo: string;
+  upload: Blob;
+  card: Card;
+  polygon: number[][] | null;
+  panelId: string;
+  pairs: number[][] | null;
+  reference: string | null;
+  inliers: number;
+  coverage: number;
+};
+
+/** Photo → match → view. Used by the landing page, the gallery and the journey's "next stop" buttons. */
+async function runScan(file: Blob, lang: string, onView: (v: View) => void) {
+  const photo = URL.createObjectURL(file); // stays in the browser; only a downscaled copy is sent
+  onView({ name: "scanning", photo });
+  try {
+    const upload = await shrink(file);
+    const r = await scan(upload, lang);
+    onView(
+      r.status === "matched"
+        ? {
+            name: "result", chat: false, photo, upload, card: r.card, polygon: r.panel.polygon ?? null,
+            panelId: r.panel.id, pairs: r.panel.pairs ?? null, reference: r.panel.reference ?? null,
+            inliers: r.panel.inliers, coverage: r.panel.coverage,
+          }
+        : { name: "uncertain", photo },
+    );
+  } catch (err) {
+    onView({ name: "error", message: (err as Error).message });
+  }
+}
 type View =
   | { name: "home" }
   | { name: "scanning"; photo: string }
@@ -51,7 +83,7 @@ function Shell() {
         {view.name === "home" && <Home onView={setView} />}
         {view.name === "scanning" && <Scanning photo={view.photo} />}
         {view.name === "result" && (
-          <Workspace view={view} setChat={(chat) => setView({ ...view, chat })} onAgain={home} />
+          <Workspace key={view.photo} view={view} setChat={(chat) => setView({ ...view, chat })} onAgain={home} onView={setView} />
         )}
         {view.name === "uncertain" && <Uncertain photo={view.photo} onAgain={home} />}
         {view.name === "error" && (
@@ -142,21 +174,7 @@ function HeroVerse() {
 function Home({ onView }: { onView: (v: View) => void }) {
   const t = useT();
   const { lang } = useLang();
-  const run = async (file: Blob) => {
-    const photo = URL.createObjectURL(file); // stays in the browser; only a downscaled copy is sent
-    onView({ name: "scanning", photo });
-    try {
-      const upload = await shrink(file);
-      const r = await scan(upload, lang);
-      onView(
-        r.status === "matched"
-          ? { name: "result", chat: false, photo, upload, card: r.card, polygon: r.panel.polygon ?? null }
-          : { name: "uncertain", photo },
-      );
-    } catch (err) {
-      onView({ name: "error", message: (err as Error).message });
-    }
-  };
+  const run = (file: Blob) => runScan(file, lang, onView);
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -308,11 +326,17 @@ function Uncertain({ photo, onAgain }: { photo: string; onAgain: () => void }) {
 const WIDE = "(min-width: 960px)";
 
 /** Desktop: verse info and chat side by side (info on the reading-start side). Phone: info, then chat. */
-function Workspace({ view, setChat, onAgain }: {
+function Workspace({ view, setChat, onAgain, onView }: {
   view: Matched & { chat: boolean };
   setChat: (c: boolean) => void;
   onAgain: () => void;
+  onView: (v: View) => void;
 }) {
+  const { lang } = useLang();
+  const onScan = (src: string) => {
+    window.scrollTo({ top: 0 });
+    void fetch(src).then((r) => r.blob()).then((b) => runScan(b, lang, onView));
+  };
   const [wide, setWide] = useState(() => window.matchMedia(WIDE).matches);
   useEffect(() => {
     const mq = window.matchMedia(WIDE);
@@ -323,7 +347,7 @@ function Workspace({ view, setChat, onAgain }: {
   if (wide) {
     return (
       <div className="workspace">
-        <Info view={view} onAsk={null} onAgain={onAgain} />
+        <Info view={view} onAsk={null} onAgain={onAgain} onScan={onScan} />
         <Chat view={view} onBack={null} />
       </div>
     );
@@ -331,7 +355,7 @@ function Workspace({ view, setChat, onAgain }: {
   return view.chat ? (
     <Chat view={view} onBack={() => setChat(false)} />
   ) : (
-    <Info view={view} onAsk={() => setChat(true)} onAgain={onAgain} />
+    <Info view={view} onAsk={() => setChat(true)} onAgain={onAgain} onScan={onScan} />
   );
 }
 
@@ -387,7 +411,12 @@ const STYLE_AR: Record<string, string> = {
   Thuluth: "الثلث", Diwani: "الديواني", Naskh: "النسخ", Kufic: "الكوفي", "Ruq'ah": "الرقعة", "Nasta'liq": "النستعليق",
 };
 
-function Info({ view, onAsk, onAgain }: { view: Matched; onAsk: (() => void) | null; onAgain: () => void }) {
+function Info({ view, onAsk, onAgain, onScan }: {
+  view: Matched;
+  onAsk: (() => void) | null;
+  onAgain: () => void;
+  onScan: (src: string) => void;
+}) {
   const t = useT();
   const { lang } = useLang();
   const { card } = view;
@@ -398,6 +427,17 @@ function Info({ view, onAsk, onAgain }: { view: Matched; onAsk: (() => void) | n
   const [regs, setRegs] = useState<Regions | "loading">("loading");
   const [active, setActive] = useState<number | null>(null);
   const [playingAya, setPlayingAya] = useState<number | null>(null);
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [pre, setPre] = useState<boolean | null | undefined>(undefined); // undefined = not answered yet
+  const [passport, setPassport] = useState<string[]>([]);
+  useEffect(() => {
+    setPassport(stamp(view.panelId));
+    let live = true;
+    getQuiz(card).then((q) => live && setQuiz(q)).catch(() => live && setPre(null));
+    return () => {
+      live = false;
+    };
+  }, [card, view.panelId]);
   useEffect(() => {
     let live = true;
     regions(view.upload, card)
@@ -447,8 +487,12 @@ function Info({ view, onAsk, onAgain }: { view: Matched; onAsk: (() => void) | n
         ))}
       </div>
       <Player card={card} onAyah={setPlayingAya} />
-      {card.translation && (
-        <blockquote className="translation" dir="ltr" lang="en">
+      {pre === undefined && quiz && <PreGuess quiz={quiz} onDone={setPre} />}
+      {pre !== undefined && pre !== null && (
+        <p className={`guess-feedback ${pre ? "right" : "wrong"}`}>{pre ? t("guess.right") : t("guess.wrong")}</p>
+      )}
+      {(pre !== undefined || !quiz) && card.translation && (
+        <blockquote className="translation reveal" dir="ltr" lang="en">
           {card.ayahs.map((a) => (
             <p key={a.aya} className={playingAya === a.aya ? "reciting" : ""}>
               “{(a.translation ?? "").replace(/\[\d+\]/g, "").trim()}”
@@ -464,6 +508,11 @@ function Info({ view, onAsk, onAgain }: { view: Matched; onAsk: (() => void) | n
         <Tile label={t("card.revelation")} value={card.revelation === "meccan" ? t("card.meccan") : t("card.medinan")} />
       </div>
       {onAsk && <button className="btn primary big" onClick={onAsk}>{t("card.ask")}</button>}
+      <QuranMap card={card} />
+      <WhySure photo={view.photo} reference={view.reference} pairs={view.pairs} inliers={view.inliers} coverage={view.coverage} />
+      <JourneyView card={card} panelId={view.panelId} onScan={onScan} />
+      <QuizView card={card} quiz={quiz} pre={pre ?? null} panelId={view.panelId} />
+      <Passport ids={passport} />
       <p className="sources-line">
         {t("card.sourcesLine")} · {card.recitation.name} ({card.recitation.source})
         {list.length > 0 && <> · {t("regions.source")}</>}
