@@ -22,6 +22,18 @@ _REGION = re.compile(
     r'\s*(-?\d+(?:\.\d+)?)\s*\]\s*,\s*"text"\s*:\s*"((?:[^"\\]|\\.)*)"'
 )
 _STYLES = re.compile(r'"styles"\s*:\s*\[([^\]]*)\]')
+_THEME = re.compile(r'"theme"\s*:\s*"([^"]+)"')
+THEMES = [
+    "dedication",
+    "devotional invocation",
+    "hadith",
+    "names of Allah",
+    "names of companions",
+    "names of the Prophet",
+    "non-religious",
+    "personal/place name",
+    "quranic",
+]
 
 
 def parse(raw: str) -> dict:
@@ -44,7 +56,9 @@ def parse(raw: str) -> dict:
     m = _STYLES.search(raw)
     if m:
         styles = [s for s in STYLES if f'"{s}"' in m.group(1)]
-    return {"styles": styles, "regions": regions}
+    t = _THEME.search(raw)
+    theme = t.group(1).strip() if t and t.group(1).strip() in THEMES else None
+    return {"styles": styles, "theme": theme, "regions": regions}
 
 
 def verse_words(ayahs: list[dict]) -> list[tuple[int, int, str]]:
@@ -65,7 +79,8 @@ def align(text: str, words: list[tuple[int, int, str]]) -> list[list[int]]:
         return []
     k = max(1, len(text.split()))
     best, best_span = 0.0, None
-    for length in range(max(1, k - 2), min(len(words), k + 2) + 1):
+    n = len(words)
+    for length in range(max(1, min(k - 2, n)), min(n, k + 2) + 1):  # a reading longer than the verse still fits it all
         for s in range(len(words) - length + 1):
             score = fuzz.ratio(reading, "".join(w[2] for w in words[s : s + length]))
             if score > best:

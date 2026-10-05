@@ -1,14 +1,16 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { ask, regions, scan, shrink, type Card, type ChatReply, type Citation, type Quiz, type Region, type Regions, type Turn } from "./api";
+import { ask, regions, scan, shrink, type Card, type ChatReply, type Citation, type Quiz, type Reading, type Region, type Regions, type Seen, type Turn } from "./api";
 import { I18nContext, arabicDigits, dirOf, useT, type Key, type Lang } from "./i18n";
-import { Explore, PreGuess, getQuiz, stamp } from "./Journey";
+import { Explore, PreGuess, getQuiz, readPassport, stamp } from "./Journey";
 
 type Matched = {
   photo: string;
   upload: Blob;
   card: Card;
   polygon: number[][] | null;
-  panelId: string;
+  panelId: string; // "" when the verse came from the reading path
+  source: "match" | "read";
+  reading: Reading | null;
   pairs: number[][] | null;
   reference: string | null;
   inliers: number;
@@ -26,10 +28,15 @@ async function runScan(file: Blob, lang: string, onView: (v: View) => void) {
       r.status === "matched"
         ? {
             name: "result", chat: false, photo, upload, card: r.card, polygon: r.panel.polygon ?? null,
-            panelId: r.panel.id, pairs: r.panel.pairs ?? null, reference: r.panel.reference ?? null,
+            panelId: r.panel.id, source: "match", reading: null, pairs: r.panel.pairs ?? null, reference: r.panel.reference ?? null,
             inliers: r.panel.inliers, coverage: r.panel.coverage,
           }
-        : { name: "uncertain", photo },
+        : r.status === "read"
+          ? {
+              name: "result", chat: false, photo, upload, card: r.card, polygon: null, panelId: "", source: "read",
+              reading: r.reading, pairs: null, reference: null, inliers: 0, coverage: 0,
+            }
+          : { name: "uncertain", photo, notQuranic: r.status === "not_quranic", reason: r.reason, seen: r.seen ?? null },
     );
   } catch (err) {
     onView({ name: "error", message: (err as Error).message });
@@ -39,7 +46,7 @@ type View =
   | { name: "home" }
   | { name: "scanning"; photo: string }
   | ({ name: "result"; chat: boolean } & Matched)
-  | { name: "uncertain"; photo: string }
+  | { name: "uncertain"; photo: string; notQuranic: boolean; reason?: string; seen: Seen | null }
   | { name: "error"; message: string };
 
 function initialLang(): Lang {
@@ -85,7 +92,7 @@ function Shell() {
         {view.name === "result" && (
           <Workspace key={view.photo} view={view} setChat={(chat) => setView({ ...view, chat })} onAgain={home} onView={setView} />
         )}
-        {view.name === "uncertain" && <Uncertain photo={view.photo} onAgain={home} />}
+        {view.name === "uncertain" && <Uncertain view={view} onAgain={home} />}
         {view.name === "error" && (
           <section className="sheet narrow">
             <h2>{t("error.title")}</h2>
@@ -284,7 +291,7 @@ function Scanning({ photo }: { photo: string }) {
   const t = useT();
   const [step, setStep] = useState(0);
   useEffect(() => {
-    const id = window.setInterval(() => setStep((s) => Math.min(s + 1, 2)), 900);
+    const id = window.setInterval(() => setStep((s) => Math.min(s + 1, 3)), 1100);
     return () => window.clearInterval(id);
   }, []);
   return (
@@ -296,7 +303,7 @@ function Scanning({ photo }: { photo: string }) {
         <div className="scan-line" />
       </div>
       <ol className="scan-steps">
-        {(["scan.step1", "scan.step2", "scan.step3"] as const).map((k, i) => (
+        {(["scan.step1", "scan.step2", "scan.step3", "scan.step4"] as const).filter((_, i) => i < 3 || step >= 3).map((k, i) => (
           <li key={k} className={i < step ? "done" : i === step ? "now" : ""}>
             <span className="dot">{i < step ? "✓" : ""}</span>{t(k)}
           </li>
@@ -306,16 +313,48 @@ function Scanning({ photo }: { photo: string }) {
   );
 }
 
-function Uncertain({ photo, onAgain }: { photo: string; onAgain: () => void }) {
+const THEME_KEY: Record<string, Key> = {
+  "names of Allah": "theme.names_allah", "devotional invocation": "theme.dua", hadith: "theme.hadith",
+  "names of the Prophet": "theme.prophet", "names of companions": "theme.companions", dedication: "theme.dedication",
+  "personal/place name": "theme.name", "non-religious": "theme.non_religious", quranic: "theme.quranic",
+};
+
+/** No verse shown: either KhaṭṭVision judged the panel not Quranic, or the reading was not safe to trust.
+ *  The visitor still sees what our model saw (style, where the text is), never a guessed verse. */
+function Uncertain({ view, onAgain }: {
+  view: { photo: string; notQuranic: boolean; reason?: string; seen: Seen | null };
+  onAgain: () => void;
+}) {
   const t = useT();
+  const { lang } = useLang();
+  const seen = view.seen;
+  const style = seen?.styles[0];
+  const styleName = style ? (lang === "ar" ? STYLE_AR[style] ?? style : style) : null;
+  const regs: Region[] = (seen?.boxes ?? []).map((box) => ({ box, words: [] }));
+  const theme = seen?.theme ? THEME_KEY[seen.theme] : undefined;
   return (
     <section className="sheet narrow">
-      <img src={photo} alt="" className="photo" />
-      <div className="notice warn">
-        <span className="badge warn">{t("uncertain.badge")}</span>
-        <h2>{t("uncertain.title")}</h2>
-        <p>{t("uncertain.body")}</p>
-        <p className="muted">{t("uncertain.tips")}</p>
+      {regs.length ? <PhotoWithRegions photo={view.photo} polygon={null} regs={regs} active={null} onPick={() => undefined} />
+        : <img src={view.photo} alt="" className="photo" />}
+      {seen && (
+        <div className="seen">
+          <span className="seen-title">{t("seen.title")}</span>
+          <div className="chips">
+            {styleName && <span className="chip style">{t("card.style")} {styleName}</span>}
+            {theme && <span className={`chip ${view.notQuranic ? "" : "ok"}`}>{t(theme)}</span>}
+            {regs.length > 0 && <span className="chip">{t("seen.regions").replace("{n}", lang === "ar" ? arabicDigits(regs.length) : String(regs.length))}</span>}
+          </div>
+        </div>
+      )}
+      <div className={`notice ${view.notQuranic ? "info-note" : "warn"}`}>
+        <span className={`badge ${view.notQuranic ? "" : "warn"}`}>{view.notQuranic ? t("notq.badge") : t("uncertain.badge")}</span>
+        <h2>{view.notQuranic ? t("notq.title") : t("uncertain.title")}</h2>
+        <p>
+          {view.notQuranic ? t("notq.body")
+            : view.reason === "ornate_style" ? t("uncertain.ornate").replace("{s}", styleName ?? "")
+            : t("uncertain.body")}
+        </p>
+        {!view.notQuranic && <p className="muted">{t("uncertain.tips")}</p>}
         <p className="muted">{t("uncertain.guide")}</p>
       </div>
       <button className="btn primary" onClick={onAgain}>{t("scan.again")}</button>
@@ -431,7 +470,7 @@ function Info({ view, onAsk, onAgain, onScan }: {
   const [pre, setPre] = useState<boolean | null | undefined>(undefined); // undefined = not answered yet
   const [passport, setPassport] = useState<string[]>([]);
   useEffect(() => {
-    setPassport(stamp(view.panelId));
+    setPassport(view.panelId ? stamp(view.panelId) : readPassport());
     let live = true;
     getQuiz(card).then((q) => live && setQuiz(q)).catch(() => live && setPre(null));
     return () => {
@@ -439,6 +478,11 @@ function Info({ view, onAsk, onAgain, onScan }: {
     };
   }, [card, view.panelId]);
   useEffect(() => {
+    if (view.reading) {
+      // the reading path already ran KhaṭṭVision: its regions come with the scan
+      setRegs({ available: true, styles: view.reading.styles, regions: view.reading.regions, seconds: 0 });
+      return;
+    }
     let live = true;
     regions(view.upload, card)
       .then((r) => live && setRegs(r))
@@ -446,7 +490,7 @@ function Info({ view, onAsk, onAgain, onScan }: {
     return () => {
       live = false;
     };
-  }, [view.upload, card]);
+  }, [view.upload, view.reading, card]);
   const list = regs !== "loading" && regs.available ? regs.regions : [];
   const style = regs !== "loading" && regs.available ? regs.styles[0] : undefined;
   const lit = new Set((active !== null ? list[active]?.words ?? [] : []).map(([a, i]) => wordKey(a, i)));
@@ -465,7 +509,14 @@ function Info({ view, onAsk, onAgain, onScan }: {
         <span className="caption">{t("card.flow")}</span>
       </div>
       <div className="chips">
-        <span className="chip ok">✓ {t("card.verified")}</span>
+        {view.source === "match" ? (
+          <span className="chip ok">✓ {t("card.verified")}</span>
+        ) : (
+          <span className="chip read">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></svg>
+            {t("card.readBy")} · {t("card.readScore").replace("{s}", lang === "ar" ? arabicDigits(Math.round(view.reading!.score)) : String(Math.round(view.reading!.score)))}
+          </span>
+        )}
         <span className="chip">{t("card.quranic")}</span>
         {style && <span className="chip style">{t("card.style")} {lang === "ar" ? STYLE_AR[style] ?? style : style}</span>}
       </div>
@@ -510,6 +561,7 @@ function Info({ view, onAsk, onAgain, onScan }: {
       <Explore
         card={card} panelId={view.panelId} onScan={onScan} quiz={quiz} pre={pre ?? null} passport={passport}
         photo={view.photo} reference={view.reference} pairs={view.pairs} inliers={view.inliers} coverage={view.coverage}
+        reading={view.reading}
       />
       <p className="sources-line">
         {t("card.sourcesLine")} · {card.recitation.name} ({card.recitation.source})
@@ -777,7 +829,7 @@ function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) 
         )}
         <img src={view.photo} alt="" className="chat-thumb" />
         <div className="chat-title">
-          <b>{name} {card.ref.label} · {t("chat.verifiedShort")}</b>
+          <b>{name} {card.ref.label} · {view.source === "read" ? t("chat.readShort") : t("chat.verifiedShort")}</b>
           <span>{t("chat.subtitle")}</span>
         </div>
         <img src="/mark.svg" alt="" className="chat-mark" />

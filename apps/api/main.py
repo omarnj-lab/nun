@@ -146,8 +146,8 @@ async def scan(request: Request, image: UploadFile = File(...), lang: str = Form
     m = matcher()
     res = m.match(im)
     elapsed = round((time.perf_counter() - t) * 1000)
-    if not res.accepted:  # never guess
-        return {"status": "uncertain", "timings_ms": {"match": elapsed}}
+    if not res.accepted:  # not one of our panels: KhaṭṭVision reads it (the reading path), never a guess
+        return await read_path(im, lang, elapsed)
     panel = next(p for p in collection.load() if p["id"] == res.id)
     card = build_card(store, panel["sura"], panel["aya_from"], panel["aya_to"], "en" if lang != "ar" else "ar")
     return {
@@ -168,6 +168,56 @@ async def scan(request: Request, image: UploadFile = File(...), lang: str = Form
 
 
 VISION_URL = os.environ.get("VISION_URL", "http://127.0.0.1:8001")
+
+
+async def analyze(im: Image.Image) -> dict | None:
+    """KhaṭṭVision structured analysis (styles, theme, regions with readings), or None if the service is down."""
+    import httpx
+
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=90)
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            r = await client.post(f"{VISION_URL}/analyze", content=buf.getvalue())
+        r.raise_for_status()
+        return r.json()
+    except httpx.HTTPError:
+        return None
+
+
+async def read_path(im: Image.Image, lang: str, match_ms: int) -> dict:
+    """No collection match → KhaṭṭVision reads the panel → nearest Quran passage, shown only past the gate
+    (nun.reading). The visitor never sees the model's reading: only corpus text, or what the model saw."""
+    from nun import reading
+    from nun.vlm.regions import regions_for_card
+
+    t = time.perf_counter()
+    out = await analyze(im)
+    timings = {"match": match_ms, "read": round((time.perf_counter() - t) * 1000)}
+    if out is None:
+        return {"status": "uncertain", "reason": "reader_unavailable", "timings_ms": timings}
+    d = reading.decide(out)
+    seen = {"styles": d["styles"], "theme": d["theme"], "boxes": [r["box"] for r in out.get("regions", [])]}
+    if d["status"] != "read":
+        return {
+            "status": "not_quranic" if d["status"] == "not_quranic" else "uncertain",
+            "reason": d["reason"],
+            "seen": seen,
+            "timings_ms": timings,
+        }
+    card = build_card(store, d["sura"], d["aya_from"], d["aya_to"], "en" if lang != "ar" else "ar")
+    return {
+        "status": "read",
+        "reading": {
+            "score": d["score"],
+            "letters": d["letters"],
+            "styles": d["styles"],
+            "theme": d["theme"],
+            "regions": regions_for_card(out, card["ayahs"]),
+        },
+        "card": card,
+        "timings_ms": timings,
+    }
 
 
 @app.post("/api/regions")

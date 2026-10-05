@@ -11,7 +11,12 @@ export type Card = {
 };
 export type ScanResult =
   | { status: "matched"; card: Card; panel: { id: string; inliers: number; coverage: number; polygon: number[][] | null; pairs: number[][] | null; reference: string | null } }
-  | { status: "uncertain" };
+  | { status: "read"; card: Card; reading: Reading }
+  | { status: "uncertain" | "not_quranic"; reason?: string; seen?: Seen };
+/** What KhaṭṭVision saw (never its reading): script styles, theme, where the text is. */
+export type Seen = { styles: string[]; theme: string | null; boxes: [number, number, number, number][] };
+/** A verse found by the reading path: KhaṭṭVision read the panel and the reading matched this Quran passage. */
+export type Reading = { score: number; letters: number; styles: string[]; theme: string | null; regions: Region[] };
 export type Citation = { id: string; title: string; source: string; url: string; text: string };
 export type ChatReply = {
   answer: string;

@@ -10,7 +10,7 @@ def test_parse_full_and_truncated():
         '{"bbox_1000_xywh": [10, 10, 500, 2'  # cut off by the token cap
     )
     p = parse(raw)
-    assert p["styles"] == ["Thuluth"]
+    assert p["styles"] == ["Thuluth"] and p["theme"] == "quranic"
     assert len(p["regions"]) == 1
     assert p["regions"][0]["box"] == [0.077, 0.345, 0.933, 0.619]
 
@@ -38,3 +38,9 @@ def test_regions_for_card_drops_reading():
     out = regions_for_card(parsed, [AYAH])
     assert out == [{"box": [0, 0, 1, 1], "words": [[114, 5], [114, 6], [114, 7], [114, 8]]}]
     assert "text" not in out[0]
+
+
+def test_align_reading_longer_than_the_verse():
+    words = verse_words([AYAH])
+    span = align("فتعالى الله الملك الحق وقل رب زدني علما علما شيء اخر هنا", words)
+    assert span and span[0] == [114, 0]

@@ -4,7 +4,7 @@
 import { useContext, useEffect, useMemo, useState, type ReactElement } from "react";
 import {
   journey as getJourney, postQuiz, quiz as getQuiz, quranMap,
-  type Card, type Journey, type Quiz, type QuizOption, type SurahInfo,
+  type Card, type Journey, type Quiz, type QuizOption, type Reading, type SurahInfo,
 } from "./api";
 import { I18nContext, arabicDigits, useT } from "./i18n";
 
@@ -119,6 +119,32 @@ export function WhySure({ photo, reference, pairs, inliers, coverage }: {
           <p className="why-text">{t("why.explain")}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Why a verse found by the reading path can be shown: our model read the text, the reading matched the Mushaf. */
+function WhyRead({ reading }: { reading: Reading }) {
+  const t = useT();
+  const num = useNum();
+  const steps: [string, string][] = [
+    [t("whyread.s1"), t("whyread.s1d")],
+    [t("whyread.s2"), t("whyread.s2d").replace("{s}", num(Math.round(reading.score))).replace("{n}", num(reading.letters))],
+    [t("whyread.s3"), t("whyread.s3d")],
+  ];
+  return (
+    <div className="why open">
+      <div className="why-head">
+        <span className="why-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></svg>
+        </span>
+        <span className="why-title"><b>{t("whyread.title")}</b><span>{t("whyread.sub")}</span></span>
+      </div>
+      <ol className="why-steps">
+        {steps.map(([h, d], i) => (
+          <li key={i}><span className="n">{num(i + 1)}</span><div><b>{h}</b><p>{d}</p></div></li>
+        ))}
+      </ol>
     </div>
   );
 }
@@ -262,7 +288,7 @@ export function QuizView({ card, quiz, pre, panelId, onNext }: {
   useEffect(() => {
     if (done && !sent) {
       setSent(true);
-      void postQuiz({ panel: panelId, sura: card.ref.sura, aya: card.ref.aya_from, lang, pre_correct: pre, post_correct: score, post_total: qs.length });
+      void postQuiz({ panel: panelId || undefined, sura: card.ref.sura, aya: card.ref.aya_from, lang, pre_correct: pre, post_correct: score, post_total: qs.length });
     }
   }, [done, sent, panelId, card, lang, pre, score, qs.length]);
   if (!quiz) return null;
@@ -318,6 +344,7 @@ const TAB_ICONS: Record<Tab, ReactElement> = {
 export function Explore(props: {
   card: Card; panelId: string; onScan: (src: string) => void; quiz: Quiz | null; pre: boolean | null;
   passport: string[]; photo: string; reference: string | null; pairs: number[][] | null; inliers: number; coverage: number;
+  reading: Reading | null;
 }) {
   const t = useT();
   const [tab, setTab] = useState<Tab>("journey");
@@ -344,7 +371,9 @@ export function Explore(props: {
         )}
         {tab === "map" && <QuranMap card={props.card} />}
         {tab === "why" && (
-          <WhySure photo={props.photo} reference={props.reference} pairs={props.pairs} inliers={props.inliers} coverage={props.coverage} />
+          props.reading ? <WhyRead reading={props.reading} /> : (
+            <WhySure photo={props.photo} reference={props.reference} pairs={props.pairs} inliers={props.inliers} coverage={props.coverage} />
+          )
         )}
       </div>
     </section>
