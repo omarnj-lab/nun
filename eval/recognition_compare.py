@@ -63,6 +63,7 @@ def is_correct(store: CorpusStore, label: dict, pred: dict) -> bool:
 
 
 def image_b64(path: Path, max_side: int = 1568) -> str:
+    Image.MAX_IMAGE_PIXELS = None  # the team's own local test files: some PNGs exceed Pillow's default guard
     im = Image.open(path)
     if im.mode in ("RGBA", "LA", "P"):
         im = im.convert("RGBA")
@@ -101,7 +102,7 @@ def ask_claude(model: str, b64: str) -> str:
     client = anthropic.Anthropic()
     r = client.messages.create(
         model=model,
-        max_tokens=200,
+        max_tokens=16000,
         messages=[
             {
                 "role": "user",
@@ -112,7 +113,8 @@ def ask_claude(model: str, b64: str) -> str:
             }
         ],
     )
-    return "".join(b.text for b in r.content if b.type == "text")
+    text = "".join(b.text for b in r.content if b.type == "text")
+    return text or f"[no answer: stop_reason={r.stop_reason}]"
 
 
 def ask_openai(model: str, b64: str) -> str:
@@ -143,34 +145,82 @@ def ask_openai(model: str, b64: str) -> str:
     )
 
 
-def run_external(system: str, labels: list[dict], store: CorpusStore, cache: Path) -> list[dict]:
+def run_external(system: str, labels: list[dict], store: CorpusStore, cache: Path, workers: int = 8) -> list[dict]:
+    """Ask one external model about every image (8 at a time); answers are cached so a rerun resumes."""
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
     cache.mkdir(parents=True, exist_ok=True)
     out_file = cache / f"{system}.jsonl"
     done = {}
     if out_file.exists():
         done = {json.loads(x)["file"]: json.loads(x) for x in out_file.read_text(encoding="utf-8").splitlines() if x}
-    rows = []
-    with out_file.open("a", encoding="utf-8") as f:
-        for lab in labels:
-            if lab["file"] in done:
-                rows.append(done[lab["file"]])
-                continue
-            t = time.perf_counter()
-            try:
-                b64 = image_b64(FIC / lab["file"])
-                text = ask_claude(system, b64) if system.startswith("claude") else ask_openai(system, b64)
-                err = None
-            except Exception as e:  # noqa: BLE001
-                text, err = "", str(e)[:200]
-            row = {"file": lab["file"], "raw": text[:300], "error": err, "seconds": round(time.perf_counter() - t, 1)}
+    lock = threading.Lock()
+
+    def one(lab: dict) -> dict:
+        t = time.perf_counter()
+        try:
+            b64 = image_b64(FIC / lab["file"])
+            text = ask_claude(system, b64) if system.startswith("claude") else ask_openai(system, b64)
+            err = None
+        except Exception as e:  # noqa: BLE001
+            text, err = "", str(e)[:200]
+        row = {"file": lab["file"], "raw": text[:300], "error": err, "seconds": round(time.perf_counter() - t, 1)}
+        with lock, out_file.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
-            f.flush()
-            rows.append(row)
-            print(f"[{system}] {lab['file']} → {text[:60]!r}", flush=True)
-    return rows
+        print(f"[{system}] {lab['file']} → {text[:60]!r}", flush=True)
+        return row
+
+    todo = [lab for lab in labels if lab["file"] not in done]
+    with ThreadPoolExecutor(workers) as pool:
+        for row in pool.map(one, todo):
+            done[row["file"]] = row
+    return [done[lab["file"]] for lab in labels]
+
+
+def run_nun(labels: list[dict]) -> list[dict]:
+    """Nūn as deployed: match the photo against the product collection; show a verse only on a verified match."""
+    from nun import collection
+    from nun.match.matcher import PanelMatcher
+
+    Image.MAX_IMAGE_PIXELS = None
+    m = PanelMatcher()
+    items = []
+    for p in collection.load():
+        im = Image.open(collection.images_dir() / p["file"]).convert("RGB")
+        items.append((p["id"], im, p["id"], tuple(p["text_box"]) if p["text_box"] else None))
+    m.add_many(items)
+    panels = {p["id"]: p for p in collection.load()}
+    out = []
+    for lab in labels:
+        im = Image.open(FIC / lab["file"])
+        if im.mode in ("RGBA", "LA", "P"):
+            im = im.convert("RGBA")
+            bg = Image.new("RGB", im.size, "white")
+            bg.paste(im, mask=im.split()[-1])
+            im = bg
+        im = im.convert("RGB")
+        im.thumbnail((1280, 1280))
+        r = m.match(im)
+        pred = None
+        if r.accepted:
+            p = panels[r.id]
+            pred = {"sura": p["sura"], "aya_from": p["aya_from"], "aya_to": p["aya_to"]}
+        out.append({"file": lab["file"], "pred": pred})
+    return out
 
 
 def score(system: str, labels: list[dict], store: CorpusStore, cache: Path) -> list[dict]:
+    if system == "nun":
+        return [
+            {
+                "file": r["file"],
+                "style": lab["style"],
+                "answered": r["pred"] is not None,
+                "correct": r["pred"] is not None and is_correct(store, lab, r["pred"]),
+            }
+            for r, lab in zip(run_nun(labels), labels, strict=True)
+        ]
     if system == "khattvision":
         with (FIC / "v1_scores.csv").open(encoding="utf-8") as f:
             v1 = {r["file"]: r for r in csv.DictReader(f)}
@@ -229,13 +279,17 @@ def main() -> None:
     ap.add_argument("--allow-external", action="store_true", help="send the internal test images to external APIs")
     ap.add_argument("--limit", type=int, default=0)
     args = ap.parse_args()
-    external = [s for s in args.systems if s != "khattvision"]
+    external = [s for s in args.systems if s not in ("khattvision", "nun")]
     if external and not args.allow_external:
         raise SystemExit(f"refusing to send internal images to {external}: add --allow-external once the team approves")
     store = CorpusStore()
     labels = load_labels()[: args.limit or None]
     cache = FIC / "compare_cache"
-    results = {s: score(s, labels, store, cache) for s in args.systems}
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(len(args.systems)) as pool:  # the systems run side by side
+        futures = {s: pool.submit(score, s, labels, store, cache) for s in args.systems}
+    results = {s: f.result() for s, f in futures.items()}
     md = table(results)
     out = FIC / f"recognition_compare_{dt.date.today().isoformat()}.md"  # stays in data/private (git-ignored)
     out.write_text(
