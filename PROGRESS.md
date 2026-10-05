@@ -271,3 +271,8 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
 - User: the HF Space read a camera photo correctly but the app declined it (my Naskh-only gate). Now: KhaṭṭVision reads first (same model, prompt and 512-token limit as the Space) → nearest passage, corrected to the Mushaf text → an independent check (Claude, run in parallel, never sees our reading) must name the same place → card «قرأها نموذج KhaṭṭVision · وأكّدها تحقق مستقل». Without the check: strict Naskh gate.
 - Measured on 195 panels: 25% identified, 1.0% wrong (vs 29.7% wrong with no check). Live: 93:5 Kufic ✓, 48:1 Thuluth ✓, 3:170 declined (model alone said 16:53).
 - Every reading-path decision is logged (status, reason, style, candidate, check, timings; no image). Privacy line updated: out-of-collection photos also go to the checker, not stored.
+
+## 2026-10-05 23:30 — Permanent hosting for judging (until ≥ Oct 22)
+- Public link (fixed while the tunnel process lives): **https://inner-uses-nutrition-egg.trycloudflare.com**
+- Windows scheduled task "Nun" (at logon, restart on failure) runs `scripts/ops/serve_forever.sh` in WSL: starts Ollama, KhaṭṭVision, API and the tunnel; every 30 s restarts whichever service died, never the live tunnel (so the link stays). Log: `data/supervisor.log`. PC sleep/hibernate disabled on AC.
+- Remaining risk: a Windows reboot (e.g. an update) restarts the tunnel with a NEW link → pause Windows Update for the judging period.
