@@ -661,7 +661,8 @@ function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) 
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [provider, setProvider] = useState<"local" | "anthropic">("local");
+  // the model is chosen on the server; ?model=local|anthropic overrides it for the team's comparisons
+  const provider = new URLSearchParams(window.location.search).get("model") ?? undefined;
   const [replyLang, setReplyLang] = useState("auto");
   const [open, setOpen] = useState<string | null>(null);
   const [speaking, setSpeaking] = useState<number | null>(null);
@@ -764,10 +765,6 @@ function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) 
               {CHAT_LANGS.map(([code, native]) => <option key={code} value={code}>{native}</option>)}
             </select>
           </label>
-          <div className="seg" role="group" aria-label={t("chat.model")}>
-            <button className={provider === "local" ? "on" : ""} onClick={() => setProvider("local")}>{t("chat.local")}</button>
-            <button className={provider === "anthropic" ? "on" : ""} onClick={() => setProvider("anthropic")}>{t("chat.claude")}</button>
-          </div>
         </div>
       </div>
       <div className="msgs">

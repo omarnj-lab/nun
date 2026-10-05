@@ -43,7 +43,7 @@ Stream from the source (don't rehost) unless the terms allow rehosting. **Never 
 | Resource | Used for | Access | Status |
 |---|---|---|---|
 | Sahih al-Bukhari / Sahih Muslim via dorar.net/hadith | Curated hadith set (only hadith the reviewer approves, stored with book, number, grading) | dorar.net/hadith (reachable with a normal user-agent; blocks some bots) | 🔴 reuse terms; curate a small set by hand for the demo verses |
-| «بينات: أسئلة وأجوبة عن الإسلام» | RAG source for general questions and misconceptions (package-designated) | page dawa.center/file/7937 → PDF `https://dawa.center/storage/files/AMYj6DfmHlSnZ766Zz0VlBNwmYtdwhAl31XMETlT.pdf` | 🟡 designated by the package; confirm redistribution terms before shipping the chunks in the public repo (fetch at build time otherwise) |
+| «بينات: أسئلة وأجوبة عن الإسلام» (Osoul Center, 1445/2024) | Chat grounding for general questions and misconceptions (package-designated). **In use since 2026-10-05**: 263 questions, one document per question, cited with question number + PDF page | page dawa.center/file/7937 → PDF `https://dawa.center/storage/files/AMYj6DfmHlSnZ766Zz0VlBNwmYtdwhAl31XMETlT.pdf`; fetched at build time (`python -m nun.chat.bayyinat --fetch`), parsed with pypdf (BSD) into git-ignored `data/raw/bayyinat/` | 🟡 designated by the package; redistribution terms not stated, so the PDF/text are **not committed**; the app cites and links the original |
 | Jamhara dictionary (islamic-content.com/dictionary) | Approved English equivalents for sharia terms (glossary; overrides MT) | HTML pages (200 OK) | 🟡 designated by the package; store only the terms we use, with links |
 
 ## 4. Fonts (synthetic data + UI)

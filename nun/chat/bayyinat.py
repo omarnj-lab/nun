@@ -1,15 +1,16 @@
 """«بينات: أسئلة وأجوبة عن الإسلام» (Osoul Center, 2024): the package-designated source for general questions and
 misconceptions (RULES.md §3.5, SOURCES.md §3). One document per question, retrieved by an Arabic search query.
 
-The PDF is fetched at build time into data/raw/bayyinat/ (git-ignored; redistribution terms unconfirmed) and indexed
-here in memory. Its text layer stores lam-alef ligatures in reverse order; `fix()` repairs the frequent cases
-(الله, the article before a hamza) and leaves the rest, which models read without trouble.
+The PDF is fetched at build time into data/raw/bayyinat/ (git-ignored; redistribution terms unconfirmed), parsed
+once with pypdf (BSD) into bayyinat.json next to it, and indexed in memory. pypdf keeps the body text intact; the
+decorative headings come out garbled, so they are matched by their first letters.
 
     python -m nun.chat.bayyinat --fetch      # download the PDF (once)
 """
 
 from __future__ import annotations
 
+import json
 import math
 import re
 from collections import Counter
@@ -22,23 +23,9 @@ from nun.normalize.arabic import normalize
 PDF_URL = "https://dawa.center/storage/files/AMYj6DfmHlSnZ766Zz0VlBNwmYtdwhAl31XMETlT.pdf"
 PAGE_URL = "https://dawa.center/file/7937"
 PDF_PATH = Path("data/raw/bayyinat/bayyinat.pdf")
+JSON_PATH = PDF_PATH.with_suffix(".json")
 TITLE = "بينات: أسئلة وأجوبة عن الإسلام (مركز أصول، 1445هـ)"
 MIN_SCORE = 4.0  # BM25 score below which no question is considered relevant
-
-_FIXES = [
-    ("هللا", "الله"),  # heading form of اللهِ
-    ("اهلل", "الله"),
-    ("هلل", "لله"),
-    ("األ", "الأ"),
-    ("اإل", "الإ"),
-    ("اآل", "الآ"),
-]
-
-
-def fix(text: str) -> str:
-    for a, b in _FIXES:
-        text = text.replace(a, b)
-    return text
 
 
 @dataclass
@@ -51,37 +38,57 @@ class Entry:
     body: str  # the full answer (trimmed)
 
 
-def _between(text: str, start: str, ends: list[str]) -> str:
-    i = text.find(start)
-    if i < 0:
-        return ""
-    i += len(start)
-    j = min([k for k in (text.find(e, i) for e in ends) if k >= 0] or [len(text)])
-    return text[i:j].strip()
+SIMILAR = re.compile(r"^عبارات مشا")
+ANSWER = re.compile(r"^الجواب\s*$")
+SHORT = re.compile(r"^مختص")
+DETAIL = re.compile(r"التفصيل")
 
 
 def _clean(text: str) -> str:
-    text = re.sub(r"\n\s*3\s*\n", "\n• ", text)  # bullet glyphs come out as "3"
-    text = re.sub(r"\d+ أسئلة منتقاة حول الإسلام- بينات", " ", text)  # running page header
-    return re.sub(r"[ \t]+", " ", re.sub(r"\n{2,}", "\n", text)).strip()
+    text = re.sub(r"^\s*\d+\s*$|^بينات - أسئلة منتقاة حول الإسلام\s*$", "", text, flags=re.M)  # page furniture
+    text = text.replace("\t", "• ")
+    return re.sub(r"[ ]+", " ", re.sub(r"\n{2,}", "\n", text)).strip()
+
+
+def _split(lines: list[str]) -> tuple[str, str, str, str]:
+    """question, similar phrasings, short answer, full answer from one question's lines."""
+
+    def find(rx: re.Pattern, start: int = 0) -> int:
+        return next((i for i in range(start, len(lines)) if rx.search(lines[i].strip())), -1)
+
+    q0 = next(i for i, ln in enumerate(lines) if ln.strip() == "السؤال") + 1
+    sim, ans = find(SIMILAR, q0), find(ANSWER, q0)
+    q_end = min(i for i in (sim, ans, len(lines)) if i >= 0)
+    question = " ".join(ln.strip() for ln in lines[q0:q_end])
+    similar = " ".join(ln.strip() for ln in lines[sim + 1 : ans]) if 0 <= sim < ans else ""
+    sh = find(SHORT, max(ans, 0))
+    det = find(DETAIL, max(sh, 0)) if sh >= 0 else -1
+    short = " ".join(ln.strip() for ln in lines[sh + 1 : det if det > sh else sh + 12]) if sh >= 0 else ""
+    body = "\n".join(lines[ans + 1 :]) if ans >= 0 else "\n".join(lines[q_end:])
+    return question, similar, short, body
 
 
 def parse(pdf: Path = PDF_PATH) -> list[Entry]:
-    import pymupdf
+    import pypdf
 
-    doc = pymupdf.open(pdf)
-    pages = [fix(p.get_text()) for p in doc]
+    pages = [p.extract_text() or "" for p in pypdf.PdfReader(pdf).pages]
     starts = [i for i in range(20, len(pages)) if "السؤال" in (ln.strip() for ln in pages[i].split("\n"))]
     out = []
     for k, s in enumerate(starts):
         e = starts[k + 1] if k + 1 < len(starts) else len(pages)
-        text = _clean("\n".join(pages[s:e]))
-        q = _between(text, "السؤال\n", ["عبارات مشابهة للسؤال", "الجواب\n"])
-        similar = _between(text, "عبارات مشابهة للسؤال", ["الجواب\n"])
-        short = _between(text, "مختصَرُ الإجابة", ["الجوابُ التفصيلي", "الجواب التفصيلي"])
-        body = text[text.find("الجواب\n") :] if "الجواب\n" in text else text
-        out.append(Entry(k + 1, s + 1, q.strip(" :\n"), similar.strip(" :\n•"), short.strip(" :\n"), body[:7000]))
+        lines = _clean("\n".join(pages[s:e])).split("\n")
+        question, similar, short, body = _split(lines)
+        out.append(Entry(k + 1, s + 1, question.strip(" :•"), similar.strip(" :•"), short.strip(" :•"), body[:7000]))
     return out
+
+
+def load() -> list[Entry]:
+    """Parsed questions, from the JSON cache when it is newer than the PDF."""
+    if JSON_PATH.exists() and JSON_PATH.stat().st_mtime >= PDF_PATH.stat().st_mtime:
+        return [Entry(**d) for d in json.loads(JSON_PATH.read_text(encoding="utf-8"))]
+    entries = parse()
+    JSON_PATH.write_text(json.dumps([e.__dict__ for e in entries], ensure_ascii=False), encoding="utf-8")
+    return entries
 
 
 _TOKEN = re.compile(r"\S+")
@@ -128,7 +135,7 @@ class Index:
 def index() -> Index | None:
     if not PDF_PATH.exists():
         return None
-    return Index(parse())
+    return Index(load())
 
 
 def fetch() -> None:

@@ -63,7 +63,7 @@ export async function ask(
   message: string,
   history: Turn[],
   lang: string,
-  provider: string,
+  provider?: string,
 ): Promise<ChatReply> {
   const body = {
     sura: card.ref.sura,
