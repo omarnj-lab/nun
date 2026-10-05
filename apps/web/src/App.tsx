@@ -162,8 +162,8 @@ function Home({ onView }: { onView: (v: View) => void }) {
     e.target.value = "";
     if (file) void run(file);
   };
-  const trySample = async () => {
-    const blob = await (await fetch("/sample.jpg")).blob();
+  const tryImage = async (src: string) => {
+    const blob = await (await fetch(src)).blob();
     void run(blob);
   };
   return (
@@ -189,7 +189,7 @@ function Home({ onView }: { onView: (v: View) => void }) {
               <input type="file" accept="image/*" hidden onChange={onPick} />
             </label>
           </div>
-          <button className="sample-link" onClick={() => void trySample()}>
+          <button className="sample-link" onClick={() => void tryImage("/sample.jpg")}>
             <img src={panelSrc("02_ivory_blue")} alt="" /> {t("hero.sample")} {lang === "ar" ? "←" : "→"}
           </button>
         </div>
@@ -234,7 +234,17 @@ function Home({ onView }: { onView: (v: View) => void }) {
         <div className="marquee" dir="ltr">
           <div className="marquee-track">
             {[...PANELS, ...PANELS].map((id, i) => (
-              <img key={i} src={panelSrc(id)} alt="" loading="lazy" />
+              <button
+                key={i}
+                className="gallery-item"
+                onClick={() => void tryImage(panelSrc(id))}
+                aria-label={t("gallery.try")}
+                tabIndex={i < PANELS.length ? 0 : -1}
+                aria-hidden={i >= PANELS.length}
+              >
+                <img src={panelSrc(id)} alt="" loading="lazy" />
+                <span className="gallery-cta">{Icon.camera}{t("gallery.try")}</span>
+              </button>
             ))}
           </div>
         </div>
@@ -554,6 +564,38 @@ function citeLabel(c: Citation, card: Card, t: ReturnType<typeof useT>): string 
   return t("cite.facts");
 }
 
+/** Reply languages offered in the picker ("auto" = the language the visitor writes or speaks in). */
+const CHAT_LANGS: [code: string, native: string, speech: string][] = [
+  ["ar", "العربية", "ar-SA"], ["en", "English", "en-US"], ["fr", "Français", "fr-FR"], ["es", "Español", "es-ES"],
+  ["de", "Deutsch", "de-DE"], ["tr", "Türkçe", "tr-TR"], ["ur", "اردو", "ur-PK"], ["fa", "فارسی", "fa-IR"],
+  ["id", "Bahasa Indonesia", "id-ID"], ["ms", "Bahasa Melayu", "ms-MY"], ["zh", "中文", "zh-CN"], ["ru", "Русский", "ru-RU"],
+  ["bn", "বাংলা", "bn-BD"], ["hi", "हिन्दी", "hi-IN"], ["it", "Italiano", "it-IT"], ["pt", "Português", "pt-BR"],
+  ["ja", "日本語", "ja-JP"], ["ko", "한국어", "ko-KR"], ["sw", "Kiswahili", "sw-KE"], ["nl", "Nederlands", "nl-NL"],
+];
+const speechCode = (code: string) => CHAT_LANGS.find((l) => l[0] === code)?.[2] ?? code;
+
+/** Text for the synthetic voice: generated explanations only. Anything marked as Quran (﴿…﴾) or carrying Quranic
+ *  diacritics is left out, so a synthetic voice never recites the Quran (CLAUDE.md rule 2). */
+function speakable(text: string): string {
+  return text
+    .replace(/﴿[^﴾]*﴾/g, " ")
+    .split(/\s+/)
+    .filter((w) => (w.match(/[ً-ْٰۖ-ۭ]/g) ?? []).length < 2)
+    .join(" ");
+}
+
+type Recognition = {
+  lang: string;
+  interimResults: boolean;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+const SpeechRec = (window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition })
+  .SpeechRecognition ?? (window as unknown as { webkitSpeechRecognition?: new () => Recognition }).webkitSpeechRecognition;
+
 function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) {
   const t = useT();
   const { lang } = useLang();
@@ -562,12 +604,25 @@ function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) 
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [provider, setProvider] = useState<"local" | "anthropic">("local");
+  const [replyLang, setReplyLang] = useState("auto");
   const [open, setOpen] = useState<string | null>(null);
+  const [speaking, setSpeaking] = useState<number | null>(null);
+  const [listening, setListening] = useState(false);
+  const rec = useRef<Recognition | null>(null);
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // braces: never return scrollIntoView(...) — recent Chrome returns a Promise, which React would call as cleanup
     end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [msgs, busy]);
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis?.cancel();
+      rec.current?.stop();
+    };
+  }, []);
+
+  const lastReply = [...msgs].reverse().find((m) => m.reply)?.reply;
+  const activeLang = replyLang !== "auto" ? replyLang : lastReply?.language ?? lang;
 
   const send = async (q: string) => {
     if (!q.trim() || busy) return;
@@ -576,7 +631,7 @@ function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) 
     setInput("");
     setBusy(true);
     try {
-      const r = await ask(card, q, history, lang, provider);
+      const r = await ask(card, q, history, replyLang, provider);
       setMsgs((m) => [...m, { role: "assistant", text: r.answer, reply: r }]);
     } catch (err) {
       setMsgs((m) => [...m, { role: "assistant", text: `⚠ ${(err as Error).message}` }]);
@@ -584,6 +639,45 @@ function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) 
       setBusy(false);
     }
   };
+
+  const speak = (i: number, text: string, code: string) => {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    synth.cancel();
+    if (speaking === i) {
+      setSpeaking(null);
+      return;
+    }
+    const u = new SpeechSynthesisUtterance(speakable(text));
+    u.lang = speechCode(code);
+    const voice = synth.getVoices().find((v) => v.lang.toLowerCase().startsWith(code));
+    if (voice) u.voice = voice;
+    u.onend = () => setSpeaking(null);
+    u.onerror = () => setSpeaking(null);
+    setSpeaking(i);
+    synth.speak(u);
+  };
+
+  const listen = () => {
+    if (!SpeechRec) return;
+    if (listening) {
+      rec.current?.stop();
+      return;
+    }
+    const r = new SpeechRec();
+    r.lang = speechCode(activeLang);
+    r.interimResults = true;
+    r.onresult = (e) => {
+      const said = Array.from(e.results).map((res) => res[0]!.transcript).join(" ");
+      setInput(said);
+    };
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    rec.current = r;
+    setListening(true);
+    r.start();
+  };
+
   const name = lang === "ar" ? card.sura_name.ar : card.sura_name.en;
   return (
     <section className="sheet chat">
@@ -601,15 +695,30 @@ function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) 
         <img src="/mark.svg" alt="" className="chat-mark" />
       </div>
       <div className="chat-tools">
-        <p className="banner">{t("chat.banner")}</p>
-        <div className="seg" role="group" aria-label={t("chat.model")}>
-          <button className={provider === "local" ? "on" : ""} onClick={() => setProvider("local")}>{t("chat.local")}</button>
-          <button className={provider === "anthropic" ? "on" : ""} onClick={() => setProvider("anthropic")}>{t("chat.claude")}</button>
+        <p className="banner" dir="auto">{lastReply?.banner ?? t("chat.banner")}</p>
+        <div className="tool-row">
+          <label className="lang-pick">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" /></svg>
+            <select value={replyLang} onChange={(e) => setReplyLang(e.target.value)} aria-label={t("chat.lang")}>
+              <option value="auto">
+                {t("chat.auto")}{replyLang === "auto" && lastReply ? ` · ${lastReply.language_name}` : ""}
+              </option>
+              {CHAT_LANGS.map(([code, native]) => <option key={code} value={code}>{native}</option>)}
+            </select>
+          </label>
+          <div className="seg" role="group" aria-label={t("chat.model")}>
+            <button className={provider === "local" ? "on" : ""} onClick={() => setProvider("local")}>{t("chat.local")}</button>
+            <button className={provider === "anthropic" ? "on" : ""} onClick={() => setProvider("anthropic")}>{t("chat.claude")}</button>
+          </div>
         </div>
       </div>
       <div className="msgs">
         {msgs.length === 0 && (
           <div className="suggest">
+            <p className="any-lang">
+              <span>{t("chat.anyLang")}</span>
+              <span className="hello" dir="ltr">مرحبا · Hello · Bonjour · Merhaba · Salam · 你好 · Hola</span>
+            </p>
             {(["chat.s1", "chat.s2", "chat.s3"] as const).map((k) => (
               <button key={k} className="bubble-btn" onClick={() => void send(t(k))}>{t(k)}</button>
             ))}
@@ -621,6 +730,20 @@ function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) 
           const key = (c: Citation) => `${i}-${c.id}`;
           return (
             <div key={i} className={`bubble ${m.role} ${referral ? "referral" : ""}`}>
+              {m.reply && (
+                <div className="bubble-meta">
+                  <span className="lang-tag">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" /></svg>
+                    {m.reply.language_name}
+                  </span>
+                  {"speechSynthesis" in window && (
+                    <button className={`speak ${speaking === i ? "on" : ""}`} onClick={() => speak(i, text, m.reply!.language)}
+                      aria-label={t("chat.speak")} title={t("chat.speak")}>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z" /><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" /></svg>
+                    </button>
+                  )}
+                </div>
+              )}
               <p dir="auto">{text}</p>
               {referral && <p className="referral-line" dir="auto"><b>{t("chat.referral")}:</b> {referral}</p>}
               {m.reply && m.reply.citations.length > 0 && (
@@ -647,7 +770,13 @@ function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) 
         <div ref={end} />
       </div>
       <form className="ask" onSubmit={(e) => { e.preventDefault(); void send(input); }}>
-        <input dir="auto" value={input} onChange={(e) => setInput(e.target.value)} placeholder={t("chat.placeholder")} maxLength={1000} />
+        {SpeechRec && (
+          <button type="button" className={`mic ${listening ? "on" : ""}`} onClick={listen} aria-label={t("chat.mic")} title={t("chat.mic")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+          </button>
+        )}
+        <input dir="auto" value={input} onChange={(e) => setInput(e.target.value)}
+          placeholder={listening ? t("chat.listening") : t("chat.placeholder")} maxLength={1000} />
         <button className="btn primary" disabled={busy || !input.trim()}>{t("chat.send")}</button>
       </form>
     </section>

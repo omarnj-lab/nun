@@ -116,8 +116,19 @@ button { font: inherit; color: inherit; }
   mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
 .marquee-track { display: flex; gap: 16px; width: max-content; padding: 6px 0 18px; animation: marquee 60s linear infinite; }
 .marquee:hover .marquee-track { animation-play-state: paused; }
-.marquee img { width: 170px; height: 170px; border-radius: 16px; object-fit: cover; box-shadow: 0 8px 20px -12px rgba(19, 32, 31, .4); }
+.gallery-item { position: relative; flex: none; padding: 0; border: 0; background: none; border-radius: 16px; cursor: pointer;
+  transition: transform .25s ease; }
+.gallery-item img { width: 170px; height: 170px; border-radius: 16px; object-fit: cover; display: block;
+  box-shadow: 0 8px 20px -12px rgba(19, 32, 31, .4); }
+.gallery-item:hover, .gallery-item:focus-visible { transform: translateY(-6px) scale(1.04); }
+.gallery-cta { position: absolute; inset-inline: 10px; bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: rgba(255, 255, 255, .94); color: var(--teal); font-weight: 600; font-size: 14px; border-radius: 12px; padding: 6px 8px;
+  opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; font-family: var(--font-ui); }
+.gallery-cta svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.gallery-item:hover .gallery-cta, .gallery-item:focus-visible .gallery-cta { opacity: 1; transform: none; }
+@media (hover: none) { .gallery-cta { opacity: 1; transform: none; } }
 @keyframes marquee { to { transform: translateX(calc(-50% - 8px)); } }
+.marquee-track { animation-duration: 70s; }
 
 /* scanning */
 .scanning { display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 16px 0 32px; }
@@ -155,7 +166,7 @@ button { font: inherit; color: inherit; }
   .cta { flex: 1 1 100%; justify-content: center; }
   .trust { grid-template-columns: 1fr; margin-top: -12px; }
   .steps ol { grid-template-columns: 1fr; }
-  .marquee img { width: 130px; height: 130px; }
+  .gallery-item img { width: 130px; height: 130px; }
 }
 
 /* sheets */
@@ -256,6 +267,23 @@ button { font: inherit; color: inherit; }
 .back { font-size: 20px; }
 .chat-tools { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 0; }
 .banner { background: var(--gold-soft); border-radius: 12px; padding: 8px 12px; margin: 0; font-size: 13.5px; }
+.tool-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.lang-pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 0 6px 0 12px;
+  background: var(--surface); color: var(--teal); min-height: 38px; }
+.lang-pick svg, .lang-tag svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.lang-pick select { border: 0; background: none; font: inherit; font-size: 14px; color: var(--teal); padding: 6px 4px; cursor: pointer; max-width: 190px; }
+.any-lang { align-self: stretch; margin: 0 0 4px; text-align: center; color: var(--muted); font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.any-lang .hello { color: var(--gold); font-weight: 600; letter-spacing: .02em; }
+.bubble-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: -2px; }
+.lang-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--teal); background: var(--teal-soft);
+  border-radius: 999px; padding: 1px 8px 1px 6px; }
+.speak, .mic { border: 0; background: var(--teal-soft); color: var(--teal); border-radius: 50%; width: 32px; height: 32px; display: grid;
+  place-items: center; cursor: pointer; flex: none; }
+.speak svg, .mic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.speak.on { background: var(--teal); color: #fff; }
+.mic { width: 48px; height: 48px; }
+.mic.on { background: var(--warn); color: #fff; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(166, 75, 40, .5); } 100% { box-shadow: 0 0 0 12px rgba(166, 75, 40, 0); } }
 .seg { align-self: flex-start; display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .seg button { border: 0; background: var(--surface); padding: 6px 14px; cursor: pointer; font-size: 14px; min-height: 36px; }
 .seg button.on { background: var(--teal); color: #fff; }
@@ -288,3 +316,5 @@ button { font: inherit; color: inherit; }
   .chat { min-height: calc(100vh - 140px); }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+/* the gallery keeps moving (slowly) even with reduced motion: the visitor asked for it, and it pauses on hover */
+@media (prefers-reduced-motion: reduce) { .marquee-track { animation: marquee 140s linear infinite !important; } }

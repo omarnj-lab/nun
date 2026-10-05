@@ -19,6 +19,8 @@ export type ChatReply = {
   level: "A" | "B" | "C" | "D";
   referral: string | null;
   banner: string;
+  language: string; // ISO 639-1 code of the reply
+  language_name: string; // its native name
   provider: string;
   model: string;
 };

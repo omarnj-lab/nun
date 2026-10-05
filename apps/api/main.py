@@ -221,7 +221,7 @@ class ChatIn(BaseModel):
     aya_to: int
     message: str = Field(min_length=1, max_length=1000)
     history: list[ChatTurn] = []
-    lang: str = "ar"
+    lang: str = Field("auto", max_length=8)  # "auto" = answer in the visitor's language, or an ISO 639-1 code
     provider: str | None = None
 
 
