@@ -257,3 +257,7 @@ secrets not in git ✅ (`.env` ignored; gitleaks pre-commit hook).
   → default `CHAT_PROVIDER=anthropic`, router on local qwen3.6 (`ROUTER_PROVIDER=local`), `ANSWER_EFFORT=low`. The UI no longer names or switches the model.
 - **Recognition comparison** prepared (`eval/recognition_compare.py`); KhaṭṭVision on the 195 internal images: 34.9% exact (Naskh 83%), answered 68%, precision 52%. External models wait for (a) an OpenAI key and (b) the team's OK to send the internal images to OpenAI/Anthropic (the script refuses without `--allow-external`).
 - Tests: 101 pass.
+
+## 2026-10-05 — Recognition comparison (team approved sending the 195 internal images to OpenAI/Anthropic for evaluation only)
+- Results: `eval/results/2026-10-05/recognition_compare.md` (numbers only). Nūn deployed: 0 wrong verses on 195 panels outside its collection. KhaṭṭVision v1 34.9% correct / 32.8% wrong; GPT-5.5 57.9% / 35.4%; Claude Opus 5 84.6% / 10.3%. Two-source agreement: 1–3% wrong overall, 0% on Naskh.
+- Also today: edge/browser cache headers, 1280 px uploads, Explore tabs (journey / quiz / map / why), sticky ask bar on phones; jank test (`scripts/ops/ui_jank.py`) shows 60 fps at 4× CPU throttling.
