@@ -218,10 +218,10 @@ def journey_view(sura: int, aya_from: int, aya_to: int, lang: str = "en", panel:
 
 
 @app.get("/api/quran-map")
-def quran_map() -> list[dict]:
+def quran_map() -> JSONResponse:
     from nun import journey
 
-    return journey.quran_map()
+    return JSONResponse(journey.quran_map(), headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/api/quiz/{sura}/{aya_from}/{aya_to}")
@@ -370,7 +370,15 @@ def web(path: str) -> Response:
         return JSONResponse({"detail": "Not found"}, status_code=404)
     f = (WEB_DIST / path).resolve()
     if path and WEB_DIST.resolve() in f.parents and f.is_file():
-        return FileResponse(f)
+        # hashed build files never change; images and icons rarely do. Cacheable responses are also kept at the
+        # Cloudflare edge, which removes the tunnel round trip for repeat visitors.
+        if path.startswith("assets/"):
+            cache = "public, max-age=31536000, immutable"
+        elif f.suffix in (".jpg", ".png", ".svg", ".webp", ".ico", ".webmanifest"):
+            cache = "public, max-age=86400"
+        else:
+            cache = "no-cache"
+        return FileResponse(f, headers={"Cache-Control": cache})
     index = WEB_DIST / "index.html"
     if not index.exists():
         return HTMLResponse("Web app not built: run npm run build in apps/web", status_code=503)

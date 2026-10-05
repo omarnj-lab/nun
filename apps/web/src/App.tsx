@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { ask, regions, scan, shrink, type Card, type ChatReply, type Citation, type Quiz, type Region, type Regions, type Turn } from "./api";
 import { I18nContext, arabicDigits, dirOf, useT, type Key, type Lang } from "./i18n";
-import { JourneyView, Passport, PreGuess, QuizView, QuranMap, WhySure, getQuiz, stamp } from "./Journey";
+import { Explore, PreGuess, getQuiz, stamp } from "./Journey";
 
 type Matched = {
   photo: string;
@@ -507,17 +507,23 @@ function Info({ view, onAsk, onAgain, onScan }: {
         <Tile label={t("card.juz")} value={num(card.juz)} />
         <Tile label={t("card.revelation")} value={card.revelation === "meccan" ? t("card.meccan") : t("card.medinan")} />
       </div>
-      {onAsk && <button className="btn primary big" onClick={onAsk}>{t("card.ask")}</button>}
-      <QuranMap card={card} />
-      <WhySure photo={view.photo} reference={view.reference} pairs={view.pairs} inliers={view.inliers} coverage={view.coverage} />
-      <JourneyView card={card} panelId={view.panelId} onScan={onScan} />
-      <QuizView card={card} quiz={quiz} pre={pre ?? null} panelId={view.panelId} />
-      <Passport ids={passport} />
+      <Explore
+        card={card} panelId={view.panelId} onScan={onScan} quiz={quiz} pre={pre ?? null} passport={passport}
+        photo={view.photo} reference={view.reference} pairs={view.pairs} inliers={view.inliers} coverage={view.coverage}
+      />
       <p className="sources-line">
         {t("card.sourcesLine")} · {card.recitation.name} ({card.recitation.source})
         {list.length > 0 && <> · {t("regions.source")}</>}
       </p>
       <button className="btn soft" onClick={onAgain}>{t("scan.again")}</button>
+      {onAsk && (
+        <div className="ask-bar">
+          <button className="btn primary big" onClick={onAsk}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H10l-4 4v-4H5z" /></svg>
+            {t("card.ask")}
+          </button>
+        </div>
+      )}
     </section>
   );
 }

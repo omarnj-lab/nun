@@ -1,7 +1,7 @@
 /* The learning journey around a verse card (Track 03): guess before reading, why the match is sure, where the
    verse sits in the Quran, the next stops, a short understanding check and the visitor's discovery passport.
    Everything shown comes from approved data via the API; quiz results are sent as anonymous counts. */
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState, type ReactElement } from "react";
 import {
   journey as getJourney, postQuiz, quiz as getQuiz, quranMap,
   type Card, type Journey, type Quiz, type QuizOption, type SurahInfo,
@@ -84,13 +84,13 @@ export function PreGuess({ quiz, onDone }: { quiz: Quiz | null; onDone: (correct
 export function WhySure({ photo, reference, pairs, inliers, coverage }: {
   photo: string; reference: string | null; pairs: number[][] | null; inliers: number; coverage: number;
 }) {
+  const open = true; // shown inside its own Explore tab
   const t = useT();
   const num = useNum();
-  const [open, setOpen] = useState(false);
   const [ratio, setRatio] = useState<[number, number]>([1, 1]);
   return (
     <div className={`why ${open ? "open" : ""}`}>
-      <button className="why-head" onClick={() => setOpen(!open)} aria-expanded={open}>
+      <div className="why-head">
         <span className="why-icon">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>
         </span>
@@ -98,8 +98,7 @@ export function WhySure({ photo, reference, pairs, inliers, coverage }: {
           <b>{t("why.title")}</b>
           <span>{t("why.stats").replace("{n}", num(inliers.toLocaleString("en"))).replace("{c}", num(Math.round(coverage * 100)))}</span>
         </span>
-        <span className="chev">{open ? "−" : "+"}</span>
-      </button>
+      </div>
       {open && (
         <div className="why-body">
           {reference && pairs ? (
@@ -213,7 +212,6 @@ export function JourneyView({ card, panelId, onScan }: { card: Card; panelId?: s
   const relation = (r: string) => t(r === "next" ? "journey.nextPanel" : r === "before" ? "journey.prevPanel" : "journey.samePanel");
   return (
     <div className="journey">
-      <h3>{t("journey.title")}</h3>
       <div className="context">
         {j.prev && <ContextAyah a={j.prev} label={t("journey.before")} />}
         <div className="ctx-now"><span>{t("journey.now")}</span><b>{card.ref.label}</b></div>
@@ -250,11 +248,12 @@ function ContextAyah({ a, label }: { a: { label: string; text_display: string; t
 }
 
 /* ---------- understanding check ---------- */
-export function QuizView({ card, quiz, pre, panelId }: { card: Card; quiz: Quiz | null; pre: boolean | null; panelId?: string }) {
+export function QuizView({ card, quiz, pre, panelId, onNext }: {
+  card: Card; quiz: Quiz | null; pre: boolean | null; panelId?: string; onNext?: () => void;
+}) {
   const t = useT();
   const num = useNum();
   const { lang } = useContext(I18nContext);
-  const [open, setOpen] = useState(false);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [sent, setSent] = useState(false);
   const qs = quiz?.questions ?? [];
@@ -269,17 +268,8 @@ export function QuizView({ card, quiz, pre, panelId }: { card: Card; quiz: Quiz 
   if (!quiz) return null;
   const label = (q: string, o: QuizOption) =>
     q === "surah" ? (lang === "ar" ? o.ar : o.en) : q === "revelation" ? t(o.key === "meccan" ? "card.meccan" : "card.medinan") : (o.text ?? "").replace(/\[\d+\]/g, "");
-  if (!open) {
-    return (
-      <button className="quiz-cta" onClick={() => setOpen(true)}>
-        <span className="quiz-badge">✓✗</span>
-        <span><b>{t("quiz.cta")}</b><small>{t("quiz.ctaSub")}</small></span>
-      </button>
-    );
-  }
   return (
     <div className="quiz">
-      <h3>{t("quiz.cta")}</h3>
       {qs.map((q, qi) => (
         <div key={q.id} className="quiz-q">
           <p><span className="qn">{num(qi + 1)}</span>{t(`quiz.${q.id}` as Parameters<typeof t>[0])}</p>
@@ -307,6 +297,7 @@ export function QuizView({ card, quiz, pre, panelId }: { card: Card; quiz: Quiz 
           <b>{t("quiz.score").replace("{s}", num(score)).replace("{t}", num(qs.length))}</b>
           {pre !== null && <span>{pre ? t("quiz.preRight") : t("quiz.preWrong")}</span>}
           <small>{t("quiz.privacy")}</small>
+          {onNext && <button className="btn primary next-step" onClick={onNext}>{t("quiz.next")}</button>}
         </div>
       )}
     </div>
@@ -314,3 +305,48 @@ export function QuizView({ card, quiz, pre, panelId }: { card: Card; quiz: Quiz 
 }
 
 export { getQuiz };
+
+/* ---------- the Explore area: one tab at a time (only the open tab loads and renders) ---------- */
+type Tab = "journey" | "quiz" | "map" | "why";
+const TAB_ICONS: Record<Tab, ReactElement> = {
+  journey: <svg viewBox="0 0 24 24"><path d="M4 18c4 0 4-12 8-12s4 12 8 12" /><circle cx="4" cy="18" r="1.6" /><circle cx="20" cy="18" r="1.6" /></svg>,
+  quiz: <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.2v.3" /></svg>,
+  map: <svg viewBox="0 0 24 24"><path d="M5 19V9M9 19V5M13 19v-7M17 19V8M21 19H3" /></svg>,
+  why: <svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>,
+};
+
+export function Explore(props: {
+  card: Card; panelId: string; onScan: (src: string) => void; quiz: Quiz | null; pre: boolean | null;
+  passport: string[]; photo: string; reference: string | null; pairs: number[][] | null; inliers: number; coverage: number;
+}) {
+  const t = useT();
+  const [tab, setTab] = useState<Tab>("journey");
+  const tabs: [Tab, string][] = [["journey", t("journey.title")], ["quiz", t("quiz.cta")], ["map", t("map.title")], ["why", t("why.title")]];
+  return (
+    <section className="explore">
+      <h3 className="explore-title">{t("explore.title")}</h3>
+      <div className="tabs" role="tablist">
+        {tabs.map(([k, label]) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>
+            {TAB_ICONS[k]}<span>{label}</span>
+          </button>
+        ))}
+      </div>
+      <div className="tab-body" role="tabpanel">
+        {tab === "journey" && (
+          <>
+            <Passport ids={props.passport} />
+            <JourneyView card={props.card} panelId={props.panelId} onScan={props.onScan} />
+          </>
+        )}
+        {tab === "quiz" && (
+          <QuizView card={props.card} quiz={props.quiz} pre={props.pre} panelId={props.panelId} onNext={() => setTab("journey")} />
+        )}
+        {tab === "map" && <QuranMap card={props.card} />}
+        {tab === "why" && (
+          <WhySure photo={props.photo} reference={props.reference} pairs={props.pairs} inliers={props.inliers} coverage={props.coverage} />
+        )}
+      </div>
+    </section>
+  );
+}

@@ -79,8 +79,8 @@ export async function ask(
   );
 }
 
-/** Downscale a camera photo before upload (phones send 12+ MP; the matcher needs ~1600 px). */
-export async function shrink(file: Blob, maxSide = 1600): Promise<Blob> {
+/** Downscale a camera photo before upload (phones send 12+ MP; the matcher works at 1024 px). */
+export async function shrink(file: Blob, maxSide = 1280): Promise<Blob> {
   try {
     const bmp = await createImageBitmap(file, { imageOrientation: "from-image" } as ImageBitmapOptions);
     const s = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
@@ -88,7 +88,7 @@ export async function shrink(file: Blob, maxSide = 1600): Promise<Blob> {
     canvas.width = Math.round(bmp.width * s);
     canvas.height = Math.round(bmp.height * s);
     canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-    return await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", 0.9));
+    return await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", 0.85));
   } catch {
     return file; // older browsers: send the original
   }

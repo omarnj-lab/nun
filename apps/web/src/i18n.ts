@@ -131,6 +131,8 @@ const ar = {
   "think.sources": "يبحث في المصادر المعتمدة",
   "think.writing": "يكتب الإجابة",
   "think.checking": "يتحقق من كل جملة مقابل مصدرها",
+  "explore.title": "استكشف أكثر",
+  "quiz.next": "أكمل الرحلة ←",
   "footer.ai": "نون مساعد يعمل بالذكاء الاصطناعي ويعتمد على مصادر معتمدة.",
 } as const;
 
@@ -266,6 +268,8 @@ const en: Record<Key, string> = {
   "think.sources": "Searching the approved sources",
   "think.writing": "Writing the answer",
   "think.checking": "Checking each sentence against its source",
+  "explore.title": "Explore more",
+  "quiz.next": "Continue the journey →",
   "footer.ai": "Nūn is an AI-assisted guide built on approved sources.",
 };
 

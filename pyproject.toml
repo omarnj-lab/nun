@@ -61,6 +61,7 @@ extend-exclude = ["training/reference", "eval/notebooks", "analysis"]
 "nun/chat/languages.py" = ["E501"]  # translated message table
 "eval/chat_eval.py" = ["E501"]  # question table
 "eval/recognition_compare.py" = ["E501"]  # results table
+"scripts/ops/ui_jank.py" = ["E501"]  # embedded JavaScript
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
