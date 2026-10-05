@@ -162,6 +162,15 @@ function Home({ onView }: { onView: (v: View) => void }) {
     e.target.value = "";
     if (file) void run(file);
   };
+  const marquee = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // the gallery animates only while it is on screen
+    const el = marquee.current;
+    if (!el || !("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver(([e]) => el.classList.toggle("paused", !e!.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   const tryImage = async (src: string) => {
     const blob = await (await fetch(src)).blob();
     void run(blob);
@@ -231,7 +240,7 @@ function Home({ onView }: { onView: (v: View) => void }) {
       <section className="gallery">
         <h2>{t("gallery.title")}</h2>
         <p>{t("gallery.sub")}</p>
-        <div className="marquee" dir="ltr">
+        <div className="marquee" dir="ltr" ref={marquee}>
           <div className="marquee-track">
             {[...PANELS, ...PANELS].map((id, i) => (
               <button

@@ -88,6 +88,7 @@ button { font: inherit; color: inherit; }
 .c-front img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .c-front .corner { width: 38px; height: 38px; }
 @keyframes float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
+.c-back, .c-mid { will-change: translate; }
 .result-chip { position: absolute; inset-inline-start: 20%; bottom: 8%; display: flex; align-items: center; gap: 12px;
   background: #fff; border-radius: 16px; padding: 12px 18px; box-shadow: 0 18px 40px -16px rgba(19, 32, 31, .45); animation: pop .6s 1.2s both; }
 .result-chip .tick { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--ok-soft); color: var(--ok); font-weight: 700; }
@@ -112,9 +113,12 @@ button { font: inherit; color: inherit; }
 
 /* gallery marquee */
 .gallery > p { text-align: center; color: var(--muted); margin: -10px 0 20px; }
-.marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-.marquee-track { display: flex; gap: 16px; width: max-content; padding: 6px 0 18px; animation: marquee 60s linear infinite; }
+.marquee { position: relative; overflow: hidden; contain: paint; }
+.marquee::before, .marquee::after { content: ""; position: absolute; top: 0; bottom: 0; width: 8%; z-index: 1; pointer-events: none; }
+.marquee::before { left: 0; background: linear-gradient(90deg, var(--paper), transparent); }
+.marquee::after { right: 0; background: linear-gradient(-90deg, var(--paper), transparent); }
+.marquee.paused .marquee-track { animation-play-state: paused; }
+.marquee-track { display: flex; gap: 16px; width: max-content; padding: 6px 0 18px; animation: marquee 60s linear infinite; will-change: transform; }
 .marquee:hover .marquee-track { animation-play-state: paused; }
 .gallery-item { position: relative; flex: none; padding: 0; border: 0; background: none; border-radius: 16px; cursor: pointer;
   transition: transform .25s ease; }
@@ -142,9 +146,10 @@ button { font: inherit; color: inherit; }
 .corner.br { bottom: 14px; right: 14px; border-left: 0; border-top: 0; border-bottom-right-radius: 14px; }
 .pill { position: absolute; top: 14px; inset-inline: 0; margin-inline: auto; width: max-content; z-index: 1;
   background: var(--surface); border-radius: 999px; padding: 4px 14px; font-size: 14px; box-shadow: 0 1px 4px #0002; }
-.scan-line { position: absolute; inset-inline: 8%; height: 3px; background: var(--gold); box-shadow: 0 0 14px var(--gold);
-  animation: sweep 1.6s ease-in-out infinite alternate; }
-@keyframes sweep { from { top: 10%; } to { top: 90%; } }
+.scan-line { position: absolute; inset-inline: 8%; top: 0; height: 100%; pointer-events: none; animation: sweep 1.6s ease-in-out infinite alternate;
+  will-change: transform; }
+.scan-line::before { content: ""; position: absolute; inset-inline: 0; top: 0; height: 3px; background: var(--gold); box-shadow: 0 0 14px var(--gold); }
+@keyframes sweep { from { transform: translateY(10%); } to { transform: translateY(90%); } }
 .scan-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; min-width: 260px; }
 .scan-steps li { display: flex; align-items: center; gap: 12px; color: var(--muted); transition: color .3s; }
 .scan-steps li.now { color: var(--ink); font-weight: 600; }
@@ -207,8 +212,7 @@ button { font: inherit; color: inherit; }
 .vision-line .caption { margin: 0; }
 .vision-chip { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--teal); background: var(--teal-soft);
   border-radius: 999px; padding: 4px 12px; }
-.vision-chip.loading { background: linear-gradient(90deg, var(--teal-soft) 0%, #f3ecd9 50%, var(--teal-soft) 100%);
-  background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }
+.vision-chip.loading { background: #f3ecd9; }
 .spark { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); animation: blink 1.2s infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 .chip.style { background: var(--gold-soft); color: #7d6223; }
@@ -235,10 +239,10 @@ button { font: inherit; color: inherit; }
 .player input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--gold); border: 2px solid #fff; }
 .player input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--gold); border: 2px solid #fff; }
 .bars { display: flex; align-items: flex-end; gap: 3px; height: 14px; opacity: .45; }
-.bars i { flex: 1; height: 30%; background: var(--teal); border-radius: 2px; }
+.bars i { flex: 1; height: 100%; background: var(--teal); border-radius: 2px; transform: scaleY(.3); transform-origin: bottom; }
 .bars.live { opacity: .8; }
 .bars.live i { animation: eq .9s ease-in-out infinite alternate; }
-@keyframes eq { from { height: 20%; } to { height: 100%; } }
+@keyframes eq { from { transform: scaleY(.2); } to { transform: scaleY(1); } }
 .caption { font-size: 12px; color: var(--muted); margin: -6px 0 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { border-radius: 999px; padding: 4px 12px; font-size: 14px; background: var(--paper); }
