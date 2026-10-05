@@ -514,7 +514,7 @@ function Info({ view, onAsk, onAgain, onScan }: {
         ) : (
           <span className="chip read">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7" /><circle cx="18" cy="16" r="3" /></svg>
-            {t("card.readBy")} · {t("card.readScore").replace("{s}", lang === "ar" ? arabicDigits(Math.round(view.reading!.score)) : String(Math.round(view.reading!.score)))}
+            {t("card.readBy")}{view.reading!.checked ? ` · ${t("card.checked")}` : ""} · {t("card.readScore").replace("{s}", lang === "ar" ? arabicDigits(Math.round(view.reading!.score)) : String(Math.round(view.reading!.score)))}
           </span>
         )}
         <span className="chip">{t("card.quranic")}</span>

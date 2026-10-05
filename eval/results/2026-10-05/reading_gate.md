@@ -23,3 +23,19 @@ The wrong readings at short lengths are famous phrases the model recalls instead
 **With the gate, KhaṭṭVision identifies 25 of 60 Naskh panels (42%) with 1 error, and shows no verse for ornate scripts**,
 where it states the script and text regions instead. Without the gate (nearest passage for every reading) the same
 model showed a wrong verse on 32.8% of panels (`recognition_compare.md`).
+
+## Update: model-first with an independent check (deployed)
+
+The team asked for KhaṭṭVision to identify every script, not only Naskh. Measured options on the same 195 panels
+(`analysis/v1_verse_id/safety_layers.py`; candidate = KhaṭṭVision reading → nearest passage, score ≥ 90, ≥ 15 letters):
+
+| pipeline | right | wrong (% of panels) | Naskh right / wrong | Thuluth | Diwani |
+|---|---|---|---|---|---|
+| KhaṭṭVision + nearest passage, no check | 25% | 29.7% | 60% / 5.0% | 8% / 52.5% | 14% / 23.7% |
+| + self-check (2nd prompt of the same model agrees) | 22% | 7.7% | 60% / 0% | 7% / 18.6% | 5% / 1.7% |
+| **+ independent check (Claude, blind to our reading, agrees)** | **25%** | **1.0%** | **60% / 0%** | 8% / 1.7% | 12% / 0% |
+
+Deployed: KhaṭṭVision reads → nearest passage (the Mushaf text replaces the reading) → shown only if the independent
+check names the same place; if the check is unavailable, the strict Naskh-only gate above applies.
+Live check on the team's three real out-of-collection photos: 93:5 (Kufic) ✓ shown, 48:1 (Thuluth) ✓ shown,
+3:170 (Thuluth, which the model alone read as 16:53) → not shown.

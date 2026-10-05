@@ -130,6 +130,7 @@ function WhyRead({ reading }: { reading: Reading }) {
   const steps: [string, string][] = [
     [t("whyread.s1"), t("whyread.s1d")],
     [t("whyread.s2"), t("whyread.s2d").replace("{s}", num(Math.round(reading.score))).replace("{n}", num(reading.letters))],
+    ...(reading.checked ? [[t("whyread.check"), t("whyread.checkd")] as [string, string]] : []),
     [t("whyread.s3"), t("whyread.s3d")],
   ];
   return (

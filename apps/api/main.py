@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import base64
 import io
+import logging
 import os
 import secrets
 import threading
@@ -41,6 +42,8 @@ WEB_PUBLIC = Path("apps/web/public")
 ADMIN_HTML = Path(__file__).parent / "admin.html"
 STARTED = time.time()
 
+log = logging.getLogger("nun")
+logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="Nūn API", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None)
 
 
@@ -188,15 +191,37 @@ async def analyze(im: Image.Image) -> dict | None:
 async def read_path(im: Image.Image, lang: str, match_ms: int) -> dict:
     """No collection match → KhaṭṭVision reads the panel → nearest Quran passage, shown only past the gate
     (nun.reading). The visitor never sees the model's reading: only corpus text, or what the model saw."""
-    from nun import reading
+    import asyncio
+
+    from nun import reading, vision_check
     from nun.vlm.regions import regions_for_card
 
     t = time.perf_counter()
+    # our model reads; the independent check runs at the same time (it never sees our model's answer)
+    check_task = asyncio.create_task(asyncio.to_thread(vision_check.identify, im.copy()))
     out = await analyze(im)
     timings = {"match": match_ms, "read": round((time.perf_counter() - t) * 1000)}
     if out is None:
+        check_task.cancel()
         return {"status": "uncertain", "reason": "reader_unavailable", "timings_ms": timings}
-    d = reading.decide(out)
+    best, _ = reading.candidate(out)
+    check = None
+    if best is not None:  # the check only matters when our model found a passage
+        check = await check_task
+        timings["check"] = round((time.perf_counter() - t) * 1000)
+    else:
+        check_task.cancel()
+    d = reading.decide(out, check)
+    log.info(
+        "read_path status=%s reason=%s styles=%s theme=%s candidate=%s check=%s ms=%s",
+        d["status"],
+        d["reason"],
+        d["styles"],
+        d["theme"],
+        f"{best.ref}@{best.score:.0f}/{best.qlen}" if best else None,
+        None if check is None else ("unknown" if check.get("unknown") else f"{check['sura']}:{check['aya_from']}"),
+        timings,
+    )
     seen = {"styles": d["styles"], "theme": d["theme"], "boxes": [r["box"] for r in out.get("regions", [])]}
     if d["status"] != "read":
         return {
@@ -213,6 +238,7 @@ async def read_path(im: Image.Image, lang: str, match_ms: int) -> dict:
             "letters": d["letters"],
             "styles": d["styles"],
             "theme": d["theme"],
+            "checked": d["checked"],
             "regions": regions_for_card(out, card["ayahs"]),
         },
         "card": card,

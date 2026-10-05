@@ -8,7 +8,7 @@ const ar = {
   "home.capture": "التقط صورة للوحة",
   "home.upload": "اختر صورة من المعرض",
   "home.hint": "وجّه الكاميرا نحو اللوحة كاملةً وبإضاءة جيدة.",
-  "home.privacy": "لا نحفظ صورك؛ تُعالج ثم تُحذف.",
+  "home.privacy": "لا نحفظ صورك. للوحات خارج مجموعتنا تُرسل الصورة أيضًا إلى نموذج تحقق مستقل (Anthropic) للتأكد، دون حفظ.",
   "scan.working": "نبحث عن اللوحة في مجموعتنا…",
   "scan.again": "صوّر لوحة أخرى",
   "uncertain.title": "لم نتمكن من التعرّف على هذه اللوحة بثقة",
@@ -158,8 +158,11 @@ const ar = {
   "whyread.s2": "المطابقة مع المصحف",
   "whyread.s2d": "بحثنا عن أقرب موضع في القرآن كله: تطابق {s}٪ على {n} حرفًا، واتفقت أسطر اللوحة على الموضع نفسه.",
   "whyread.s3": "النص من المصحف لا من النموذج",
-  "whyread.s3d": "ما تراه هو نص المصحف المعتمد للموضع المطابق، لا قراءة النموذج. لا نعرض آية إلا للخط الذي يقرؤه النموذج بموثوقية (النسخ).",
+  "whyread.s3d": "ما تراه هو نص المصحف المعتمد للموضع المطابق، لا قراءة النموذج؛ فإن أخطأ النموذج في حرف صُحّح من المصحف.",
   "chat.readShort": "قراءة KhaṭṭVision",
+  "card.checked": "وأكّدها تحقق مستقل",
+  "whyread.check": "تحقق مستقل",
+  "whyread.checkd": "نموذج رؤية ثانٍ لم يرَ قراءة نموذجنا سُئل عن الآية في صورتك، فأشار إلى الموضع نفسه. إن اختلفا لا نعرض آية.",
   "footer.ai": "نون مساعد يعمل بالذكاء الاصطناعي ويعتمد على مصادر معتمدة.",
 } as const;
 
@@ -172,7 +175,7 @@ const en: Record<Key, string> = {
   "home.capture": "Take a photo of the panel",
   "home.upload": "Choose from gallery",
   "home.hint": "Fit the whole panel in the frame, in good light.",
-  "home.privacy": "Your photos are not stored; they are processed and discarded.",
+  "home.privacy": "Your photos are not stored. For panels outside our collection the photo is also sent to an independent checking model (Anthropic), without storage.",
   "scan.working": "Looking for this panel in our collection…",
   "scan.again": "Scan another panel",
   "uncertain.title": "Couldn't identify this panel reliably",
@@ -322,8 +325,11 @@ const en: Record<Key, string> = {
   "whyread.s2": "Matching with the Mushaf",
   "whyread.s2d": "We searched the whole Quran for the nearest passage: a {s}% match over {n} letters, and the panel's lines agree on the same place.",
   "whyread.s3": "The text comes from the Mushaf, not the model",
-  "whyread.s3d": "What you see is the approved Mushaf text of the matched place, never the model's reading. We show a verse only for scripts the model reads reliably (Naskh).",
+  "whyread.s3d": "What you see is the approved Mushaf text of the matched place, not the model's reading: a letter the model misread is corrected from the Mushaf.",
   "chat.readShort": "read by KhaṭṭVision",
+  "card.checked": "confirmed by an independent check",
+  "whyread.check": "Independent check",
+  "whyread.checkd": "A second vision model, which never saw our model's reading, was asked which verse is in your photo and named the same place. If they disagree, no verse is shown.",
   "footer.ai": "Nūn is an AI-assisted guide built on approved sources.",
 };
 

@@ -19,7 +19,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from nun.vlm.khatt_v1 import PROMPT_STRUCTURED, KhattV1
 from nun.vlm.regions import parse
 
-MAX_NEW_TOKENS = 320  # one panel's regions fit easily; caps the time lost when the model starts repeating
+MAX_NEW_TOKENS = 512  # same as the team's HF Space (structured analysis)
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 _model: KhattV1 | None = None
 _lock = threading.Lock()

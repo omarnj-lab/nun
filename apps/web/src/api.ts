@@ -16,7 +16,9 @@ export type ScanResult =
 /** What KhaṭṭVision saw (never its reading): script styles, theme, where the text is. */
 export type Seen = { styles: string[]; theme: string | null; boxes: [number, number, number, number][] };
 /** A verse found by the reading path: KhaṭṭVision read the panel and the reading matched this Quran passage. */
-export type Reading = { score: number; letters: number; styles: string[]; theme: string | null; regions: Region[] };
+export type Reading = {
+  score: number; letters: number; styles: string[]; theme: string | null; checked: boolean; regions: Region[];
+};
 export type Citation = { id: string; title: string; source: string; url: string; text: string };
 export type ChatReply = {
   answer: string;
