@@ -944,7 +944,7 @@ function Chat({ view, onBack }: { view: Matched; onBack: (() => void) | null }) 
               {m.reply && m.reply.citations.length > 0 && (
                 <div className="cite-chips">
                   {m.reply.citations.map((c) => (
-                    <button key={c.id} className={`cite-chip ${open === key(c) ? "on" : ""}`}
+                    <button key={c.id} dir="auto" className={`cite-chip ${open === key(c) ? "on" : ""}`}
                       onClick={() => setOpen(open === key(c) ? null : key(c))}>
                       {citeLabel(c, card, t)}
                     </button>

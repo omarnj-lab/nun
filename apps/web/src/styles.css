@@ -302,7 +302,7 @@ button { font: inherit; color: inherit; }
 .referral-line { font-size: 14px; color: var(--warn); }
 .gen-label { font-size: 11.5px; color: var(--muted); }
 .cite-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.cite-chip { border: 0; border-radius: 6px; background: var(--ok-soft); color: var(--ok); font-size: 12px; font-weight: 600;
+.cite-chip { unicode-bidi: isolate; border: 0; border-radius: 6px; background: var(--ok-soft); color: var(--ok); font-size: 12px; font-weight: 600;
   padding: 2px 8px; cursor: pointer; }
 .cite-chip.on { background: var(--ok); color: #fff; }
 .cite-body { border-top: 1px solid var(--line); padding-top: 6px; font-size: 14px; }
