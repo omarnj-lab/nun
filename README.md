@@ -1,41 +1,87 @@
-# Nūn · handoff to the GPU server
+# ن Nūn · نون
 
-Everything Claude Code needs to implement Nūn on your GPU server, and the human tasks that unblock it.
+**Photograph Arabic calligraphy → see the verse exactly as in the Mushaf → listen → ask in any language.**
 
-| File | What it is | Who reads it |
-|---|---|---|
-| `CLAUDE.md` | Project memory: what Nūn is, non-negotiable rules, architecture, repo layout, commands | Claude Code, automatically, every session |
-| `SPEC.md` | Technical specification: corpus, normalisation, scan pipeline, prompts, training, API contract, agent, guards, eval, UI, deployment | Claude Code |
-| `IMPLEMENTATION.md` | Milestones M0–M15 with owners, `[PRE]`/`[BUILD]` tags, "done when" checks, the 3-day schedule, human task list | Claude Code + team |
-| `RULES.md` | Challenge rules, the scientific package (4 content levels, approved references, 12 official test questions, glossary), judging rubrics, `PRIOR_WORK.md` template | Claude Code + team |
-| `SOURCES.md` | Every data source with endpoint, terms, attribution and status (becomes `docs/SOURCES.md`) | Claude Code + reviewer |
-| `.env.example` | Keys and settings the server needs | Team |
-| `brand/` | Logo (SVG/PNG), app icon | Web app |
-| `context/` | Idea deck, brand sheet, strategy plan, registration text, participant guide, scientific package, official presentation template, teaser video | Reference |
+Nūn is an AI guide for mosques, museums and homes, built for the *AI in the Service of Islamic Content Challenge 2026*
+(Track 03 — interactive experiences that introduce Islam).
 
-## Moving it to the server
-```bash
-# from this Mac
-cd ~/Desktop/Hackathones/IslamicHackthone
-zip -r Nun_handoff.zip handoff
-scp Nun_handoff.zip <user>@<server>:~/
+- **Live app:** https://inner-uses-nutrition-egg.trycloudflare.com
+- **Our model:** [Nūn Vision 30B LoRA](https://huggingface.co/Omartificial-Intelligence-Space/Nun-Vision-30B-Lora) — open weights,
+  fine-tuned to read Arabic calligraphy (text, script style, theme, text regions)
 
-# on the server
-unzip Nun_handoff.zip && mv handoff nun && cd nun
-git init && git add -A && git commit -m "Nūn handoff: spec, plan, rules, sources, brand"
-cp .env.example .env    # fill in the keys
-claude                  # start Claude Code in this folder (it loads CLAUDE.md)
+## What it does
+
+1. **Recognise the panel.** Panels in the collection are matched instantly (DINOv2 shortlist + SIFT/RANSAC verification).
+   Any other panel is **read by Nūn Vision**, matched to the nearest passage of the whole Quran, and shown only if an
+   independent check names the same place. Otherwise Nūn says so — it never guesses a verse.
+2. **The verse card.** Quran text verbatim from the approved Mushaf text (never written by a model), approved translation
+   with the translator's name, human recitation, surah facts — and the recitation glows across the visitor's own photo.
+3. **Ask.** A chat that answers in the visitor's language from approved sources only (the verse documents and the
+   package's «بينات» Q&A book), checks every sentence against its citation, never invents a hadith, and refers personal
+   rulings (fatwa) to scholars.
+4. **Learn.** Guess the meaning before reading, a 3-question understanding check (anonymous counts only), the next verse
+   on another panel, where the verse sits in the Quran, and the *Nūn Lab* page showing the model at work.
+
+## Architecture
+
+```
+browser (React, RTL/LTR) ─HTTPS─► FastAPI  apps/api      :8000  scan · verse · chat · lab · quiz
+                                     ├── matcher (DINOv2 + SIFT, GPU 1)
+                                     ├── Nūn Vision  apps/vision  :8001  (30B 4-bit + LoRA, GPU 0, ~22 GB)
+                                     ├── chat model  Claude (Anthropic API) · local fallback via Ollama
+                                     └── corpus      Quran text, translation, metadata, «بينات»
 ```
 
-## First prompts for Claude Code
-1. `Read CLAUDE.md, SPEC.md, IMPLEMENTATION.md, RULES.md and SOURCES.md. Then do milestone M0 only. Report the GPU tier you chose, v1 smoke-test results, and anything that blocks you. Log it in PROGRESS.md.`
-2. `Do M1 (corpus). Stop and show me the reviewer drafts (names, dhikr, inscriptions list) before finalising them.`
-3. `Do M3's tooling (Commons collector + labelling tool) and M4 (scaffolding). Then write PRIOR_WORK.md and create the pre-challenge tag.` (must finish before Oct 4 09:00 Riyadh)
-4. On Oct 4 at 09:00: `Start Phase 1. Follow the Day 1 schedule in IMPLEMENTATION.md. The walking skeleton (M5 + M6) comes first.`
+## Deploy
 
-Work one milestone at a time, and check its "done when" list before moving on.
+**Needs:** Linux (or WSL2) · Python 3.11 · Node 20 · NVIDIA GPU(s): ~24 GB for Nūn Vision + ~8 GB for the matcher and
+the local router model · an Anthropic API key.
 
-## Important
-- **Only work done Oct 4–6 is scored.** Before that, do only the `[PRE]` milestones and declare them (`PRIOR_WORK.md` + tag).
-- The **scientific package** (`RULES.md` §3) is what the judges score reliability against. The four content levels and the 12 test questions are built into the agent spec and its test suite.
-- Open decisions are marked 🔴 in `SOURCES.md`: the fr/ur/id/zh translation choices, which tafsir to use, and the recitation/Bayyinat/Jamhara terms. Resolve them before Oct 4.
+```bash
+# 1. Python + the GPU stack
+python3.11 -m venv ~/.venvs/nun && source ~/.venvs/nun/bin/activate
+pip install torch --index-url https://download.pytorch.org/whl/cu128
+pip install -e ".[ml]" uvicorn
+
+# 2. Data (downloaded from the original sources; nothing is redistributed here)
+python -m nun.corpus.build              # Quran text (QuranEnc + Tanzil), translation, metadata → data/corpus/
+python -m nun.chat.bayyinat --fetch     # «بينات» Q&A book → data/raw/bayyinat/
+
+# 3. Web app
+cd apps/web && npm ci && npx vite build && cd ../..
+
+# 4. Settings
+cp .env.example .env                    # set ANTHROPIC_API_KEY and ADMIN_PASSWORD
+
+# 5. Run everything (Ollama router, Nūn Vision, API, public HTTPS tunnel) with a watchdog
+bash scripts/ops/install_ollama_wsl.sh  # once: Ollama + the local router model (qwen3.6)
+# serve_forever.sh expects the venv at ~/.venvs/nun and cloudflared at ~/.local/bin/cloudflared
+bash scripts/ops/serve_forever.sh       # public link → data/public_url.txt
+```
+
+Or run the two services directly:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 PYTHONPATH=. uvicorn apps.vision.server:app --host 127.0.0.1 --port 8001
+CUDA_VISIBLE_DEVICES=1 PYTHONPATH=. uvicorn apps.api.main:app --host 0.0.0.0 --port 8000
+```
+
+The demo collection (19 panels the team may show publicly) is in `data/collection/`; add panels at `/admin`.
+
+## Sources and attribution
+
+| Source | Used for | Terms |
+|---|---|---|
+| [QuranEnc.com](https://quranenc.com) | Saheeh International translation (v1.1.2), Uthmani text cross-check | verbatim, cite QuranEnc and the version |
+| [Tanzil Project](https://tanzil.net) | Uthmani Quran text shown in the app, surah metadata | verbatim copies, attribute Tanzil |
+| [EveryAyah.com](https://everyayah.com) | Mishary Rashid Alafasy recitation (streamed, not rehosted) | attribute reciter and source |
+| «بينات: أسئلة وأجوبة عن الإسلام» (Osoul Center, [dawa.center](https://dawa.center/file/7937)) | chat grounding for general questions | cited and linked, not redistributed |
+| [MBZUAI/DuwatBench](https://huggingface.co/datasets/MBZUAI/DuwatBench) | training data of Nūn Vision | images not redistributed |
+| Muse Glimmer 30B (Unsloth 4-bit) | base model of Nūn Vision | Apache-2.0 |
+| facebook/dinov2-small · Qwen3.6 (Ollama) · Claude (Anthropic API) | matcher embeddings · local router · chat and independent check | Apache-2.0 · Apache-2.0 · API terms |
+
+Fonts: IBM Plex Sans Arabic, Amiri Quran (SIL OFL 1.1).
+
+## Team
+
+Omer Nacar · Saeed Al-Zahrani

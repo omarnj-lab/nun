@@ -1,7 +1,7 @@
 [project]
 name = "nun"
-version = "0.0.1"
-description = "Nūn: identify and verify Arabic calligraphy inscriptions against a closed trusted corpus"
+version = "1.0.0"
+description = "Nūn: photograph Arabic calligraphy, see the verse as in the Mushaf, listen, and ask in any language"
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "pydantic>=2.7",
@@ -9,40 +9,24 @@ dependencies = [
     "python-dotenv>=1.0",
     "huggingface_hub>=0.34",
     "pillow>=10.4",
-    "pyyaml>=6.0",
     "rapidfuzz>=3.9",
     "anthropic>=1.0",
-    "openpyxl>=3.1",
     "opencv-python-headless>=4.10",
     "pypdf>=5",
-]
-
-[project.optional-dependencies]
-# GPU stack; torch itself is installed first by `make setup` from the CUDA 12.8 index (RTX 5090 / sm_120).
-# transformers==5.15.0 / trl==0.22.2 / torchao are then force-installed with --no-deps (the v1 notebook's
-# exact versions): unsloth declares transformers<=5.5, but muse_glimmer needs 5.15.
-ml = [
-    "unsloth>=2026.9",
-    "unsloth_zoo>=2026.9",
-    "peft>=0.19",
-    "accelerate>=1.10",
-    "bitsandbytes>=0.47",
-    "datasets>=3.4,<4.4",
-    "jiwer",
-    "sacrebleu",
-    "imagehash",
-    "scikit-learn",
-]
-api = [
+    "httpx>=0.27",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "python-multipart>=0.0.9",
 ]
-dev = [
-    "httpx>=0.27",
-    "ruff>=0.6",
-    "pytest>=8.0",
-    "pre-commit>=3.8",
+
+[project.optional-dependencies]
+# GPU inference: Nūn Vision (Muse Glimmer 30B 4-bit + LoRA) needs transformers 5.15; torch is installed first from the
+# CUDA 12.8 index (see README).
+ml = [
+    "transformers==5.15.0",
+    "peft>=0.19",
+    "accelerate>=1.10",
+    "bitsandbytes>=0.47",
 ]
 
 [build-system]
@@ -55,23 +39,12 @@ include = ["nun*"]
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-extend-exclude = ["training/reference", "eval/notebooks", "analysis"]
 
 [tool.ruff.lint.per-file-ignores]
 "nun/chat/languages.py" = ["E501"]  # translated message table
-"eval/chat_eval.py" = ["E501"]  # question table
-"eval/recognition_compare.py" = ["E501"]  # results table
-"scripts/ops/ui_jank.py" = ["E501"]  # embedded JavaScript
-"scripts/ops/make_naskh_test.py" = ["E501"]  # embedded HTML
-"scripts/ops/ui_karaoke.py" = ["E501"]  # embedded JavaScript
-"eval/recognition_agreement.py" = ["E501"]  # results table
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.File", "fastapi.Form"]  # FastAPI's intended parameter style
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]

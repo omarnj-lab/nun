@@ -1,7 +1,0 @@
-# Chat evaluation
-
-28 questions (12 verse, 12 official RULES §3.5, 4 trick/multilingual), full pipeline (router → «بينات» retrieval → answer → guards → answer check). Rubric judge: claude-opus-5.
-
-| model | rubric % | official pass | claims caught (answers) | language ok % | fatwa referral | median s | p90 s | errors |
-|---|---|---|---|---|---|---|---|---|
-| claude-opus-5 | 96.4 | 10/12 | 7 (6) | 100.0 | yes | 9.8 | 11.88 | 0 |

@@ -16,7 +16,7 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 from PIL import Image  # noqa: E402
 
 BASE_MODEL = "unsloth/Muse-Glimmer-30B-unsloth-bnb-4bit"
-ADAPTER = os.environ.get("VLM_ADAPTER", "NAMAA-Space/KhattVision-Muse-Glimmer-30B-LoRA")
+ADAPTER = os.environ.get("VLM_ADAPTER", "Omartificial-Intelligence-Space/Nun-Vision-30B-Lora")
 MAX_IMAGE_PIXELS = 448 * 448
 MAX_IMAGE_SIDE = 896
 

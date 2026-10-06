@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     referral_contact_ar: str = ""
     referral_contact_en: str = ""
     gpu_tier: str = "auto"
-    vlm_adapter: str = "NAMAA-Space/KhattVision-Muse-Glimmer-30B-LoRA"
+    vlm_adapter: str = "Omartificial-Intelligence-Space/Nun-Vision-30B-Lora"
     log_level: str = "info"
     data_dir: Path = Path("data")
 

@@ -3,57 +3,26 @@
 .env.*
 !.env.example
 
-# data & artefacts (models/datasets go to Hugging Face, never git)
+# runtime data: the corpus, «بينات» and logs are rebuilt or downloaded on the server
 data/*
-!data/.gitkeep
-# reviewer lists + corpus build evidence are committed; the corpus itself is rebuilt by `make corpus`
-!data/lists/
-!data/corpus/
-data/corpus/*
-!data/corpus/MANIFEST.json
-!data/corpus/SPOTCHECK.json
-*.safetensors
-*.bin
-*.gguf
-*.parquet
-outputs/
-checkpoints/
-runs/
-wandb/
+!data/collection/
 
-# challenge documents: reference only, not redistributed (SOURCES.md §7)
-context/participant_guide.pdf
-context/scientific_package.pdf
-context/presentation_template.pptx
-# large media
-context/*.mp4
+# private test data must never be published
+data/private/
 
 # python
 __pycache__/
 *.py[cod]
 .venv/
-.pytest_cache/
-.ruff_cache/
 *.egg-info/
-build/
-dist/
 
-# node
+# node / build
 node_modules/
 apps/web/dist/
+*.tsbuildinfo
 
 # os / editors
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
-
-# unsloth runtime cache
-unsloth_compiled_cache/
-*.tsbuildinfo
-
-# internal-only test data (never publish: repo, app, HF, video, deck)
-data/private/
-
-# predictions on the private Quranic-calligraphy dataset (analysis CSVs): never commit
-analysis/**/*.csv
