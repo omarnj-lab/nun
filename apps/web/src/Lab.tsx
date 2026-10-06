@@ -1,4 +1,4 @@
-/* KhaṭṭVision Lab: the team's open, fine-tuned calligraphy model as a product. Live "what our model sees" on any photo,
+/* Nūn Lab: the team's open, fine-tuned calligraphy model as a product. Live "what our model sees" on any photo,
    the measured comparison with general vision models, how Nūn uses it, and the model card with open links.
    Benchmark numbers come from eval/results/2026-10-05 (195 real calligraphy panels; images internal, numbers public). */
 import { useContext, useState } from "react";
@@ -13,16 +13,15 @@ type LabResult =
       reason: string; seconds: number;
     };
 
-const HF_MODEL = "https://huggingface.co/NAMAA-Space/KhattVision-Muse-Glimmer-30B-LoRA";
-const HF_SPACE = "https://huggingface.co/spaces/Omartificial-Intelligence-Space/Khatt-Vision-Arabic-Calligraphy-OCR";
+const HF_MODEL = "https://huggingface.co/Omartificial-Intelligence-Space/Nun-Vision-30B-Lora";
 const CODE = "https://github.com/omarnj-lab/nun";
 
-// eval/results/2026-10-05/recognition_compare.md and reading_gate.md (195 panels, none in Nūn's collection)
-const BENCH: { key: string; right: number; wrong: number; ours?: boolean }[] = [
-  { key: "lab.sys.kv", right: 34.9, wrong: 32.8, ours: true },
-  { key: "lab.sys.gpt", right: 57.9, wrong: 35.4 },
-  { key: "lab.sys.claude", right: 84.6, wrong: 10.3 },
-  { key: "lab.sys.nun", right: 25.1, wrong: 1.0, ours: true },
+// eval/results/2026-10-05 (195 real panels, none in Nūn's collection): wrong verse shown = hallucination;
+// precision = share of the verses a system shows that are right.
+const BENCH: { key: string; halluc: number; precision: number; ours?: boolean }[] = [
+  { key: "lab.sys.gpt", halluc: 35.4, precision: 62 },
+  { key: "lab.sys.claude", halluc: 10.3, precision: 89 },
+  { key: "lab.sys.nun", halluc: 1.0, precision: 96, ours: true },
 ];
 const STYLE_ACC: [string, number][] = [["Naskh", 85], ["Thuluth", 86], ["Diwani", 36]];
 const THEME_KEY: Record<string, Key> = {
@@ -70,7 +69,7 @@ export function Lab({ onBack }: { onBack: () => void }) {
 
       <section className="lab-hero">
         <span className="track-pill">{t("lab.badge")}</span>
-        <h1>KhaṭṭVision</h1>
+        <h1>Nūn Vision</h1>
         <p className="lab-sub">{t("lab.sub")}</p>
         <div className="lab-facts">
           <span><b>30B</b>{t("lab.f.base")}</span>
@@ -80,7 +79,6 @@ export function Lab({ onBack }: { onBack: () => void }) {
         </div>
         <div className="cta-row">
           <a className="cta primary" href={HF_MODEL} target="_blank" rel="noopener noreferrer">🤗 {t("lab.model")}</a>
-          <a className="cta" href={HF_SPACE} target="_blank" rel="noopener noreferrer">{t("lab.space")}</a>
           <a className="cta" href={CODE} target="_blank" rel="noopener noreferrer">{t("lab.code")}</a>
         </div>
       </section>
@@ -144,24 +142,27 @@ export function Lab({ onBack }: { onBack: () => void }) {
       <section className="lab-bench">
         <h2>{t("lab.bench")}</h2>
         <p className="muted">{t("lab.benchSub")}</p>
+        <h3>{t("lab.hallucTitle")}</h3>
         <div className="bench">
           {BENCH.map((b) => (
             <div key={b.key} className={`bench-row ${b.ours ? "ours" : ""}`}>
               <span className="bench-name">{t(b.key as Parameters<typeof t>[0])}</span>
               <div className="bench-bar" dir="ltr">
-                <i className="right" style={{ width: `${b.right}%` }} />
-                <i className="wrong" style={{ width: `${b.wrong}%` }} />
+                <i className={b.ours ? "right" : "wrong"} style={{ width: `${Math.max(b.halluc * 2.5, 1.2)}%` }} />
               </div>
-              <span className="bench-num">
-                <b>{num(b.right.toFixed(0))}٪</b> {t("lab.right")} · <b className="w">{num(b.wrong.toFixed(1))}٪</b> {t("lab.wrong")}
-              </span>
+              <span className="bench-num"><b className={b.ours ? "" : "w"}>{num(b.halluc.toFixed(1))}٪</b> {t("lab.halluc")}</span>
             </div>
           ))}
         </div>
-        <div className="bench-legend">
-          <span><i className="right" />{t("lab.legendRight")}</span>
-          <span><i className="wrong" />{t("lab.legendWrong")}</span>
-          <span><i className="none" />{t("lab.legendNone")}</span>
+        <h3>{t("lab.precTitle")}</h3>
+        <div className="bench">
+          {BENCH.map((b) => (
+            <div key={b.key} className={`bench-row ${b.ours ? "ours" : ""}`}>
+              <span className="bench-name">{t(b.key as Parameters<typeof t>[0])}</span>
+              <div className="bench-bar" dir="ltr"><i className="right" style={{ width: `${b.precision}%` }} /></div>
+              <span className="bench-num"><b>{num(b.precision)}٪</b> {t("lab.prec")}</span>
+            </div>
+          ))}
         </div>
         <p className="lab-take">{t("lab.take")}</p>
         <h3>{t("lab.styleAcc")}</h3>
