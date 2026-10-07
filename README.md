@@ -5,7 +5,7 @@
 Nūn is an AI guide for mosques, museums and homes, built for the *AI in the Service of Islamic Content Challenge 2026*
 (Track 03 — interactive experiences that introduce Islam).
 
-- **Live app:** https://depending-paragraphs-apparatus-combinations.trycloudflare.com
+- **Live app:**  https://depending-paragraphs-apparatus-combinations.trycloudflare.com/
 - **Our model:** [Nūn Vision 30B LoRA](https://huggingface.co/Omartificial-Intelligence-Space/Nun-Vision-30B-Lora) — open weights,
   fine-tuned to read Arabic calligraphy (text, script style, theme, text regions)
 
