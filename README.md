@@ -6,10 +6,10 @@ Nūn is an AI guide for mosques, museums and homes, built for the *AI in the Ser
 (Track 03 — interactive experiences that introduce Islam).
 
 > [!IMPORTANT]
-> تم تحديث رابط المشروع بسبب مشكلة تقنية في الخادم أثناء تشغيله محليًا. يرجى استخدام [الرابط الجديد للمشروع](https://depending-paragraphs-apparatus-combinations.trycloudflare.com/) بدلًا من الرابط الموجود في العرض التقديمي. نأمل أخذ هذا التحديث بعين الاعتبار، وألّا تؤثر هذه المشكلة التقنية على تقييمنا. شكرًا لتفهّمكم.
+> تم تحديث رابط المشروع بسبب مشكلة تقنية في الخادم أثناء تشغيله محليًا. يرجى استخدام [الرابط الجديد للمشروع](https://drinks-please-handy-session.trycloudflare.com/) بدلًا من الرابط الموجود في العرض التقديمي. نأمل أخذ هذا التحديث بعين الاعتبار، وألّا تؤثر هذه المشكلة التقنية على تقييمنا. شكرًا لتفهّمكم.
 
 
-- **Live app:**  https://depending-paragraphs-apparatus-combinations.trycloudflare.com/
+- **Live app:**  https://drinks-please-handy-session.trycloudflare.com/
 - **Our model:** [Nūn Vision 30B LoRA](https://huggingface.co/Omartificial-Intelligence-Space/Nun-Vision-30B-Lora) — open weights,
   fine-tuned to read Arabic calligraphy (text, script style, theme, text regions)
 
